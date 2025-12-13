@@ -61,7 +61,5 @@ EOF
     log_success "WireGuard service enabled (will start on reboot)."
 }
 
-# Only run if called directly (for testing) or sourced
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    vpn_wireguard_configure
-fi
+
+vpn_wireguard_configure
