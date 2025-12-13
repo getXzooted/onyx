@@ -45,9 +45,16 @@ COMMAND="$1"
 case "$COMMAND" in
     install)
         log_header "STARTING ONYX INSTALLATION"
-        log_info "Initializing modules..."
-        # TODO: source "$MODULES_DIR/system/bootstrap.sh"
-        log_warning "Install module not yet implemented."
+        
+        # 1. System Setup
+        log_info "Phase 1: System Bootstrap & Hardening"
+        source "$MODULES_DIR/system/bootstrap.sh"
+        source "$MODULES_DIR/system/hardening.sh"
+        
+        # 2. (Future) VPN Setup
+        # source "$MODULES_DIR/vpn/install.sh"
+        
+        log_success "Installation Complete! Use 'onyx provision' to configure keys."
         ;;
         
     provision)
