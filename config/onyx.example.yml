@@ -1,0 +1,18 @@
+# ONYX CONFIGURATION TEMPLATE
+# Rename this to onyx.yml and place in /boot to provision.
+
+# --- VPN SETTINGS (Required) ---
+# You can also drop a 'wg0.conf' file in /boot instead of filling this out.
+vpn_private_key: "YOUR_PRIVATE_KEY_HERE"
+vpn_pubkey: "SERVER_PUBLIC_KEY_HERE"
+vpn_endpoint: "1.2.3.4"
+vpn_port: "51820"
+vpn_address: "10.100.0.2/24"
+
+# --- DNS STRATEGY ---
+# true  = Use local Unbound (Maximum Privacy, slower initial connect)
+# false = Use VPN Provider DNS (Faster, good privacy)
+use_unbound: true
+
+# --- SYSTEM SETTINGS ---
+# hostname: "onyx-gateway"
