@@ -61,16 +61,20 @@ case "$COMMAND" in
         source "$MODULES_DIR/system/bootstrap.sh"
         source "$MODULES_DIR/system/hardening.sh"
 
-        # 2. DNS Setup (New)
+        # 2. RaspAP (Hotspot)
+        log_info "Phase 2: RaspAP Hotspot"
+        source "$MODULES_DIR/system/raspap.sh"
+
+        # 3. DNS Setup (New)
         log_info "Phase 2: DNS Services"
         source "$MODULES_DIR/dns/configure_unbound.sh"
         source "$MODULES_DIR/dns/set_routing.sh"
 
-        # 3. Auto-Provisioning Setup
+        # 4. Auto-Provisioning Setup
         log_info "Phase 3: Auto-Provisioning Service"
         source "$MODULES_DIR/provision/install_service.sh"
         
-        # 2. (Future) VPN Setup
+        # x. (Future) VPN Setup
         # source "$MODULES_DIR/vpn/install.sh"
         
         log_success "Installation Complete! Use 'onyx provision' to configure keys."
