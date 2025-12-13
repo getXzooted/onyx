@@ -60,6 +60,11 @@ case "$COMMAND" in
         log_info "Phase 1: System Bootstrap & Hardening"
         source "$MODULES_DIR/system/bootstrap.sh"
         source "$MODULES_DIR/system/hardening.sh"
+
+        # 2. DNS Setup (New)
+        log_info "Phase 2: DNS Services"
+        source "$MODULES_DIR/dns/configure_unbound.sh"
+        source "$MODULES_DIR/dns/set_routing.sh"
         
         # 2. (Future) VPN Setup
         # source "$MODULES_DIR/vpn/install.sh"
