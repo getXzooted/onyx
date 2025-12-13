@@ -28,7 +28,7 @@ fi
 
 # 4. USAGE MENU
 function show_usage() {
-    echo -e "\n${BOLD}Onyx Gateway${NC} - Commercial Grade Privacy Router"
+    echo -e "\n${BOLD}Onyx Gateway${NC} - Privacy Focused Router"
     echo -e "Usage: sudo onyx [COMMAND]"
     echo ""
     echo -e "${BOLD}Commands:${NC}"
