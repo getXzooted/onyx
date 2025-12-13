@@ -13,11 +13,21 @@ CORE_DIR="$ONYX_ROOT/core"
 MODULES_DIR="$ONYX_ROOT/modules"
 
 # 2. LOAD DEPENDENCIES
+# Logger is required for all scripts
 if [ -f "$CORE_DIR/logger.sh" ]; then
     source "$CORE_DIR/logger.sh"
 else
     echo "CRITICAL ERROR: Logger not found at $CORE_DIR/logger.sh"
     exit 1
+fi
+
+# Load Config Parser to read onyx.yml
+if [ -f "$CORE_DIR/config_parser.sh" ]; then
+    source "$CORE_DIR/config_parser.sh"
+    # Run the load function immediately
+    load_config
+else
+    log_warning "Config parser not found. Running with defaults."
 fi
 
 # 3. ROOT CHECK
