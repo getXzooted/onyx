@@ -74,9 +74,28 @@ case "$COMMAND" in
         
     provision)
         log_header "PROVISIONING SYSTEM"
-        log_info "Checking for keys..."
-        # TODO: source "$MODULES_DIR/provision/ingest.sh"
-        log_warning "Provision module not yet implemented."
+        
+        # 1. LOAD CONFIG
+        # We need the variables (ONYX_VPN_ENDPOINT, etc.) to be loaded first!
+        if [ -f "$CORE_DIR/config_parser.sh" ]; then
+             load_config
+        fi
+
+        # 2. RUN MODULES
+        log_info "Phase 1: Configure VPN"
+        source "$MODULES_DIR/vpn/wireguard/configure.sh"
+
+        log_info "Phase 2: Configure Firewall (Safety Net)"
+        source "$MODULES_DIR/network/safety_net.sh"
+
+        # 3. VERIFY
+        # Simple check to see if services are active
+        if systemctl is-enabled safety-net &> /dev/null; then
+             log_success "System is PROVISIONED and LOCKED DOWN."
+             log_info "Reboot recommended to apply all changes."
+        else
+             log_error "Provisioning failed. Firewall service not enabled."
+        fi
         ;;
 
     config)
