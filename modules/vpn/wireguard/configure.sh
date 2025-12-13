@@ -16,7 +16,7 @@ function vpn_wireguard_configure() {
     # 2. CHECK FOR REQUIRED VARIABLES
     # In V2, these will come from the parsed 'onyx.yml'
     # For now, we will assume they are exported as env vars by the CLI Controller
-    if [[ -z "$VPN_PRIVATE_KEY" || -z "$VPN_ENDPOINT" || -z "$VPN_PORT" || -z "$VPN_PUBKEY" ]]; then
+    if [[ -z "$ONYX_VPN_PRIVATE_KEY" || -z "$ONYX_VPN_ENDPOINT" || -z "$ONYX_VPN_PORT" || -z "$ONYX_VPN_PUBKEY" ]]; then
         log_error "Missing required VPN variables. Cannot generate config."
         return 1
     fi
@@ -31,15 +31,15 @@ function vpn_wireguard_configure() {
 [Interface]
 # The internal IP of the Pi within the VPN tunnel
 Address = 10.100.0.2/24
-PrivateKey = $VPN_PRIVATE_KEY
+PrivateKey = $ONYX_VPN_PRIVATE_KEY
 
 # DNS is handled by Unbound/Dnsmasq locally, but we define it here just in case
 # DNS = 1.1.1.1 
 
 [Peer]
 # The VPN Server you are connecting to
-PublicKey = $VPN_PUBKEY
-Endpoint = $VPN_ENDPOINT:$VPN_PORT
+PublicKey = $ONYX_VPN_PUBKEY
+Endpoint = $ONYX_VPN_ENDPOINT:$ONYX_VPN_PORT
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 EOF
