@@ -32,9 +32,45 @@ function system_install_raspap() {
         exit 1
     fi
 
-    # TARGETED FIX: Ensure WiFi service is not masked
+    # 2. FIX: Generate hostapd.conf if empty/missing
+    # This fixes the "ConditionFileNotEmpty" error from your screenshot
+    HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
+    
+    if [ ! -s "$HOSTAPD_CONF" ]; then
+        log_warning "Hostapd config is missing or empty. Generating default..."
+        
+        cat <<EOF > "$HOSTAPD_CONF"
+interface=wlan0
+driver=nl80211
+ssid=Onyx_Gateway
+hw_mode=g
+channel=6
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=ChangeMe123
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+EOF
+        log_success "Created default WiFi config (SSID: Onyx_Gateway)"
+    fi
+
+    # 3. FIX: Ensure Service is Active
+    # We must point hostapd to this config file specifically
+    DAEMON_CONF="/etc/default/hostapd"
+    echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' > "$DAEMON_CONF"
+
     systemctl unmask hostapd &> /dev/null
     systemctl enable hostapd &> /dev/null
+    systemctl restart hostapd &> /dev/null
+    
+    if systemctl is-active hostapd &> /dev/null; then
+        log_success "WiFi Service (hostapd) is RUNNING."
+    else
+        log_error "WiFi Service failed to start. Check /etc/hostapd/hostapd.conf"
+    fi
 }
 
 system_install_raspap
