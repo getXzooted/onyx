@@ -31,6 +31,10 @@ function system_install_raspap() {
         log_error "RaspAP installation failed."
         exit 1
     fi
+
+    # TARGETED FIX: Ensure WiFi service is not masked
+    systemctl unmask hostapd &> /dev/null
+    systemctl enable hostapd &> /dev/null
 }
 
 system_install_raspap
