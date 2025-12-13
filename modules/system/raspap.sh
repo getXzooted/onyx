@@ -37,10 +37,19 @@ function system_install_raspap() {
     HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
     
     if [ ! -s "$HOSTAPD_CONF" ]; then
-        log_warning "Hostapd config is missing or empty. Generating default..."
+        log_warning "Hostapd config is missing/empty. Generating default..."
+        
+        # DYNAMICALLY FIND THE INTERFACE
+        # We look for the first wireless interface that starts with 'w' (wlan0, wlan1, wlx...)
+        WIFI_IFACE=$(ls /sys/class/net | grep -E '^w' | head -n 1)
+        
+        # Fallback to wlan0 if detection fails
+        if [ -z "$WIFI_IFACE" ]; then WIFI_IFACE="wlan0"; fi
+        
+        log_info "Detected WiFi Interface: $WIFI_IFACE"
         
         cat <<EOF > "$HOSTAPD_CONF"
-interface=wlan0
+interface=$WIFI_IFACE
 driver=nl80211
 ssid=Onyx_Gateway
 hw_mode=g
