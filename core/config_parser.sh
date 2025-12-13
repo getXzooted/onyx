@@ -19,15 +19,21 @@ function load_config() {
         [[ "$key" =~ ^#.*$ ]] && continue
         [[ -z "$key" ]] && continue
 
-        # 2. Trim whitespace
-        key=$(echo "$key" | xargs)
-        value=$(echo "$value" | xargs)
+        # 2. Extract Key (Trim spaces, remove \r)
+        key=$(echo "$key" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
-        # 3. Convert to Upper Case Variable (e.g., vpn_port -> ONYX_VPN_PORT)
+        # 3. Extract Value (The Heavy Lifting)
+        # - Remove inline comments (#...)
+        # - Remove Windows \r
+        # - Trim leading/trailing whitespace
+        # - Remove surrounding quotes ("" or '')
+        value=$(echo "$value" | sed 's/#.*//' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"//;s/"$//' | sed "s/^'//;s/'$//")
+        
+        # 4. Convert to Upper Case Variable (e.g., vpn_port -> ONYX_VPN_PORT)
         # We prefix with ONYX_ to avoid conflicts with system variables
         local var_name="ONYX_${key^^}"
 
-        # 4. Export the variable so other scripts can see it
+        # 5. Export the variable so other scripts can see it
         export "$var_name"="$value"
         
         # Debug line (Uncomment to see what is being loaded)
