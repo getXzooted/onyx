@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# ==============================================================================
+#                             ONYX CLI CONTROLLER
+#                 The central command hub for the Onyx Gateway.
+# ==============================================================================
+
+# 1. ESTABLISH ROOT CONTEXT
+# We use readlink to find the actual project folder, even if this script is a symlink.
+CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
+ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+CORE_DIR="$ONYX_ROOT/core"
+MODULES_DIR="$ONYX_ROOT/modules"
+
+# 2. LOAD DEPENDENCIES
+if [ -f "$CORE_DIR/logger.sh" ]; then
+    source "$CORE_DIR/logger.sh"
+else
+    echo "CRITICAL ERROR: Logger not found at $CORE_DIR/logger.sh"
+    exit 1
+fi
+
+# 3. ROOT CHECK
+if [[ $EUID -ne 0 ]]; then
+   log_error "Onyx must be run as root. Try: sudo onyx $1"
+   exit 1
+fi
+
+# 4. USAGE MENU
+function show_usage() {
+    echo -e "\n${BOLD}Onyx Gateway${NC} - Commercial Grade Privacy Router"
+    echo -e "Usage: sudo onyx [COMMAND]"
+    echo ""
+    echo -e "${BOLD}Commands:${NC}"
+    echo -e "  ${GREEN}install${NC}    bootstrap  -> Installs all dependencies and software."
+    echo -e "  ${GREEN}provision${NC}  configure  -> Ingests keys and locks down the system."
+    echo -e "  ${GREEN}config${NC}     update     -> Re-applies settings from onyx.yml."
+    echo -e "  ${GREEN}status${NC}     check      -> Shows VPN connection and security status."
+    echo ""
+}
+
+# 5. COMMAND ROUTER
+COMMAND="$1"
+
+case "$COMMAND" in
+    install)
+        log_header "STARTING ONYX INSTALLATION"
+        log_info "Initializing modules..."
+        # TODO: source "$MODULES_DIR/system/bootstrap.sh"
+        log_warning "Install module not yet implemented."
+        ;;
+        
+    provision)
+        log_header "PROVISIONING SYSTEM"
+        log_info "Checking for keys..."
+        # TODO: source "$MODULES_DIR/provision/ingest.sh"
+        log_warning "Provision module not yet implemented."
+        ;;
+
+    config)
+        log_header "APPLYING CONFIGURATION"
+        # TODO: Ansible run tags=config
+        log_warning "Config module not yet implemented."
+        ;;
+
+    status)
+        log_header "SYSTEM STATUS"
+        # TODO: run leak checks
+        log_info "Onyx is ONLINE (Simulation)"
+        ;;
+
+    *)
+        show_usage
+        exit 1
+        ;;
+esac
