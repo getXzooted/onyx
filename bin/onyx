@@ -65,6 +65,10 @@ case "$COMMAND" in
         log_info "Phase 2: DNS Services"
         source "$MODULES_DIR/dns/configure_unbound.sh"
         source "$MODULES_DIR/dns/set_routing.sh"
+
+        # 3. Auto-Provisioning Setup
+        log_info "Phase 3: Auto-Provisioning Service"
+        source "$MODULES_DIR/provision/install_service.sh"
         
         # 2. (Future) VPN Setup
         # source "$MODULES_DIR/vpn/install.sh"
