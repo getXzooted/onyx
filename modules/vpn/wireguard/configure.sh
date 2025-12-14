@@ -13,14 +13,19 @@ function vpn_wireguard_configure() {
     # 1. DEFINE PATHS
     WG_CONF="/etc/wireguard/wg0.conf"
 
-    # --- TARGETED FIX: SELF-HEALING KEY ---
-    # Check if key is truncated (43 chars). If so, append '='
-    if [ ${#ONYX_VPN_PRIVATE_KEY} -eq 43 ]; then
-        log_warning "Key is truncated (43 chars). Auto-appending '='..."
-        ONYX_VPN_PRIVATE_KEY="${ONYX_VPN_PRIVATE_KEY}="
+    # --- AGGRESSIVE KEY REPAIR ---
+    # 2. Strip all spaces, newlines, and invisible characters first.
+    local RAW_KEY=$(echo "$ONYX_VPN_PRIVATE_KEY" | tr -d ' \n\r')
+    
+    # 3. Check if the key ends with '='. If not, append it.
+    if [[ "$RAW_KEY" != *"=" ]]; then
+        log_warning "Key missing trailing '='. Auto-repairing..."
+        ONYX_VPN_PRIVATE_KEY="${RAW_KEY}="
+    else
+        ONYX_VPN_PRIVATE_KEY="$RAW_KEY"
     fi
     
-    # 2. CHECK FOR REQUIRED VARIABLES
+    # 4. CHECK FOR REQUIRED VARIABLES
     # In V2, these will come from the parsed 'onyx.yml'
     # For now, we will assume they are exported as env vars by the CLI Controller
     if [[ -z "$ONYX_VPN_PRIVATE_KEY" || -z "$ONYX_VPN_ENDPOINT" || -z "$ONYX_VPN_PORT" || -z "$ONYX_VPN_PUBKEY" ]]; then
@@ -30,7 +35,7 @@ function vpn_wireguard_configure() {
 
     log_step "Generating $WG_CONF..."
 
-    # 3. WRITE THE CONFIG (The Bash version of your Jinja2 template)
+    # 5. WRITE THE CONFIG (The Bash version of your Jinja2 template)
     # We set umask to ensure the file is created with 600 permissions (root read/write only)
     (
         umask 077
@@ -60,7 +65,7 @@ EOF
         exit 1
     fi
     
-    # 4. ENABLE SERVICE
+    # 6. ENABLE SERVICE
     log_step "Enabling WireGuard service..."
     systemctl enable wg-quick@wg0 &> /dev/null
     
