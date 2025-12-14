@@ -125,9 +125,17 @@ case "$COMMAND" in
         ;;
 
     status)
-        log_header "SYSTEM STATUS"
-        # TODO: run leak checks
-        log_info "Onyx is ONLINE (Simulation)"
+        # 1. Check if the diagnostic tool exists
+        STATUS_SCRIPT="$ONYX_ROOT/core/onyx_status.sh"
+        
+        if [ -f "$STATUS_SCRIPT" ]; then
+            # 2. Handoff control to the diagnostic engine
+            # We execute it directly (instead of source) to keep its variables isolated
+            sudo "$STATUS_SCRIPT"
+        else
+            log_error "Status module not found at $STATUS_SCRIPT"
+            log_info "Please ensure core/onyx_status.sh exists and is executable."
+        fi
         ;;
 
     *)
