@@ -58,10 +58,20 @@ server:
     so-rcvbuf: 1m
 EOF
 
-    # 4. Restart Service
+    # 4. Unmask, Enable, Restart, and Verify
+    # We unmask to prevent the specific "masked" error you encountered.
+    log_step "Starting Unbound service..."
+    systemctl unmask unbound &>/dev/null
+    systemctl enable unbound &>/dev/null
     systemctl restart unbound
-    systemctl enable unbound &> /dev/null
-    log_success "Unbound configured and running."
+
+    # Verify it is actually running so the next script trusts it
+    if systemctl is-active unbound &>/dev/null; then
+        log_success "Unbound configured and running (Port 5335)."
+    else
+        log_error "Unbound failed to start. Check 'sudo systemctl status unbound'."
+        return 1
+    fi
 }
 
 dns_configure_unbound
