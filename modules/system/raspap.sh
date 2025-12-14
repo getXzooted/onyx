@@ -77,6 +77,16 @@ EOF
     # 2. Add the virtual AP interface to the detected device
     # This works regardless of whether it is wlan0, wlan1, etc.
     iw dev "$PHY_INT" interface add uap0 type __ap &> /dev/null
+    
+    Create uap0 automatically on every boot
+    # 3. This creates a systemd override so the interface is recreated before the service starts
+    mkdir -p /etc/systemd/system/hostapd.service.d
+    
+    echo "[Service]" > /etc/systemd/system/hostapd.service.d/override.conf
+    echo "ExecStartPre=-/sbin/iw dev $PHY_INT interface add uap0 type __ap" >> /etc/systemd/system/hostapd.service.d/override.conf
+
+    systemctl daemon-reload
+
     systemctl restart hostapd &> /dev/null
     
     if systemctl is-active hostapd &> /dev/null; then
