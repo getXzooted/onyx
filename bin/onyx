@@ -73,6 +73,12 @@ case "$COMMAND" in
         # 4. Auto-Provisioning Setup
         log_info "Phase 3: Auto-Provisioning Service"
         source "$MODULES_DIR/provision/install_service.sh"
+
+        # 5. Secure Uplink (The Final Seal)
+        # We run this LAST to lock the active internet connection
+        log_info "Phase 5: Securing Uplink"
+        source "$MODULES_DIR/system/tuning.sh"
+        system_secure_uplink
         
         # x. (Future) VPN Setup
         # source "$MODULES_DIR/vpn/install.sh"
@@ -96,7 +102,13 @@ case "$COMMAND" in
         log_info "Phase 2: Configure Firewall (Safety Net)"
         source "$MODULES_DIR/network/safety_net.sh"
 
-        # 3. VERIFY
+        # 3. SECURE UPLINK (The "Hotel" Fix)
+        # This detects the NEW hotel connection and forces it to use safe DNS.
+        log_info "Phase 3: Secure Uplink (DNS Lock)"
+        source "$MODULES_DIR/system/tuning.sh"
+        system_secure_uplink
+        
+        # 4. VERIFY
         # Simple check to see if services are active
         if systemctl is-enabled safety-net &> /dev/null; then
              log_success "System is PROVISIONED and LOCKED DOWN."
