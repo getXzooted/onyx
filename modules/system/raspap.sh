@@ -111,35 +111,51 @@ EOF
         log_error "WiFi Service failed to start. Check /etc/hostapd/hostapd.conf"
     fi
 
-    # TARGETED FIX: Configure DHCP (Universal Fix)
-    # 1. Fix the hidden RaspAP config (The Root Cause)
-    if [ -d "/etc/dnsmasq.d" ]; then
-        log_step "Updating RaspAP DHCP configs to uap0..."
-        # Find any file saying 'wlan0' and swap it to 'uap0'
-        grep -rl "interface=wlan0" /etc/dnsmasq.d/ | xargs sed -i 's/interface=wlan0/interface=uap0/g'
-    fi
-
-    # 2. Fix the main system config (The Safety Net - from your code)
-    if [ -f "/etc/dnsmasq.conf" ]; then
-        log_step "Updating Main DHCP config..."
-        # Uncomment and force uap0
-        sed -i 's/^#interface=.*/interface=uap0/' /etc/dnsmasq.conf
-        sed -i 's/^interface=.*/interface=uap0/' /etc/dnsmasq.conf
-    fi
-
-    # 3. TARGETED FIX: Manually configure Job 2 (DHCP)
-    # The installer failed to create this, so we do it ourselves.
+    # Smart DNS Prioritization
+    # Order: 1. Unbound -> 2. User Custom -> 3. VPN Config -> 4. Cloudflare
     
     RASPAP_DHCP="/etc/dnsmasq.d/090_raspap.conf"
+    WG_CONF="/etc/wireguard/wg0.conf"
     
-    log_step "Creating DHCP configuration..."
-    
+    log_step "Calculating DNS Priority..."
+
+    # 0. Extract DNS from VPN Config (if it exists)
+    # Catches "DNS = 10.64.0.1" from wg0.conf. Cleans spaces and takes the first IP if multiple exist.
+    VPN_DNS_FOUND=$(grep -i "^DNS" "$WG_CONF" 2>/dev/null | head -n 1 | awk -F '=' '{print $2}' | cut -d ',' -f 1 | tr -d '[:space:]')
+
+    # 1. Determine Upstream
+    if systemctl is-active unbound &>/dev/null; then
+        # PRIORITY 1: Unbound
+        DNS_UPSTREAM="127.0.0.1#5335"
+        log_info "DNS Mode: Unbound (Recursive)"
+
+    elif [ -n "$ONYX_DNS_CUSTOM" ]; then
+        # PRIORITY 2: User Custom (from onyx.yml)
+        DNS_UPSTREAM="$ONYX_DNS_CUSTOM"
+        log_info "DNS Mode: User Custom ($DNS_UPSTREAM)"
+
+    elif [ -n "$VPN_DNS_FOUND" ]; then
+        # PRIORITY 3: VPN Provider (Extracted from wg0.conf)
+        DNS_UPSTREAM="$VPN_DNS_FOUND"
+        log_info "DNS Mode: VPN Provider ($DNS_UPSTREAM)"
+
+    else
+        # PRIORITY 4: Last Resort
+        DNS_UPSTREAM="1.1.1.1"
+        log_info "DNS Mode: Fallback (Cloudflare)"
+    fi
+
+    # 2. Write the Configuration
+    # We use 'no-resolv' to ignore ISP/Hotel DNS completely.
     cat <<EOF > "$RASPAP_DHCP"
 interface=uap0
 dhcp-range=10.3.141.50,10.3.141.255,12h
+dhcp-option=6,10.3.141.1
+no-resolv
+server=$DNS_UPSTREAM
 EOF
-    
-    # 4. Apply Changes
+
+    # 3. Apply
     systemctl restart dnsmasq
 }
 
