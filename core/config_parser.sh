@@ -19,21 +19,26 @@ function load_config() {
         [[ "$key" =~ ^#.*$ ]] && continue
         [[ -z "$key" ]] && continue
 
-        # 2. Extract Key (Trim spaces, remove \r)
-        key=$(echo "$key" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        # 2. Trim leading/trailing whitespace from Key
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        key=$(echo "$key" | tr -d '\r')
 
-        # 3. Extract Value (The Heavy Lifting)
-        # - Remove inline comments (#...)
-        # - Remove Windows \r
-        # - Trim leading/trailing whitespace
-        # - Remove surrounding quotes ("" or '')
-        value=$(echo "$value" | sed 's/#.*//' | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/^"//;s/"$//' | sed "s/^'//;s/'$//")
+        # 3. Clean Value: Remove comments, whitespace, Windows \r, and surrounding quotes
+        value="${value%% #*}"                   # Remove inline comments
+        value="${value#"${value%%[![:space:]]*}"}" # Trim leading space
+        value="${value%"${value##*[![:space:]]}"}" # Trim trailing space
+        value=$(echo "$value" | tr -d '\r')
         
-        # 4. Convert to Upper Case Variable (e.g., vpn_port -> ONYX_VPN_PORT)
+        # 4. Strip surrounding quotes safely
+        if [[ "$value" == \"*\" ]]; then value="${value#\"}"; value="${value%\"}"; fi
+        if [[ "$value" == \'*\' ]]; then value="${value#\'}"; value="${value%\'}"; fi
+        
+        # 5. Convert to Upper Case Variable (e.g., vpn_port -> ONYX_VPN_PORT)
         # We prefix with ONYX_ to avoid conflicts with system variables
         local var_name="ONYX_${key^^}"
 
-        # 5. Export the variable so other scripts can see it
+        # 6. Export the variable so other scripts can see it
         export "$var_name"="$value"
         
         # Debug line (Uncomment to see what is being loaded)
