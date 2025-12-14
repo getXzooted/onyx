@@ -83,7 +83,7 @@ EOF
     mkdir -p /etc/systemd/system/hostapd.service.d
     
     echo "[Service]" > /etc/systemd/system/hostapd.service.d/override.conf
-    echo "ExecStartPre=-/sbin/iw dev $PHY_INT interface add uap0 type __ap" >> /etc/systemd/system/hostapd.service.d/override.conf
+    echo "ExecStartPre=-/usr/sbin/iw dev $PHY_INT interface add uap0 type __ap" >> /etc/systemd/system/hostapd.service.d/override.conf
 
     systemctl daemon-reload
 
