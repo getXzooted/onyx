@@ -74,6 +74,14 @@ EOF
     # Fallback to wlan0 if detection fails
     if [ -z "$PHY_INT" ]; then PHY_INT="wlan0"; fi
 
+    # TARGETED FIX: Lock NetworkManager out of uap0 (Corporate Standard)
+    # This ensures the OS respects our custom IP assignment and doesn't wipe it.
+    if [ -d "/etc/NetworkManager/conf.d" ]; then
+        log_step "Configuring NetworkManager to ignore uap0..."
+        echo -e "[keyfile]\nunmanaged-devices=interface-name:uap0" > /etc/NetworkManager/conf.d/99-onyx-uap0.conf
+        systemctl reload NetworkManager &> /dev/null
+    fi
+
     # 2. Persistence Override (Create Interface + Assign IP)
     # Add the virtual AP interface to the detected device
     # This works regardless of whether it is wlan0, wlan1, etc.
