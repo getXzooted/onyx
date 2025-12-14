@@ -73,18 +73,26 @@ EOF
     
     # Fallback to wlan0 if detection fails
     if [ -z "$PHY_INT" ]; then PHY_INT="wlan0"; fi
-    
-    # 2. Add the virtual AP interface to the detected device
+
+    # 2. Persistence Override (Create Interface + Assign IP)
+    # Add the virtual AP interface to the detected device
     # This works regardless of whether it is wlan0, wlan1, etc.
     iw dev "$PHY_INT" interface add uap0 type __ap &> /dev/null
-    
-    Create uap0 automatically on every boot
-    # 3. This creates a systemd override so the interface is recreated before the service starts
+
     mkdir -p /etc/systemd/system/hostapd.service.d
     
     echo "[Service]" > /etc/systemd/system/hostapd.service.d/override.conf
-    echo "ExecStartPre=-/usr/sbin/iw dev $PHY_INT interface add uap0 type __ap" >> /etc/systemd/system/hostapd.service.d/override.conf
+    
+    # 1. Create the virtual interface (Ignore error if exists)
+    echo "ExecStartPre=-/usr/sbin/iw dev "$PHY_INT" interface add uap0 type __ap" >> /etc/systemd/system/hostapd.service.d/override.conf
 
+    # 2. ASSIGN GATEWAY IP (The Missing Link)
+    # This matches the default RaspAP DHCP range (10.3.141.x)
+    echo "ExecStartPre=-/usr/sbin/ip addr add 10.3.141.1/24 dev uap0" >> /etc/systemd/system/hostapd.service.d/override.conf
+    
+    # 3. Bring the interface UP
+    echo "ExecStartPre=-/usr/sbin/ip link set uap0 up" >> /etc/systemd/system/hostapd.service.d/override.conf
+    
     systemctl daemon-reload
 
     systemctl restart hostapd &> /dev/null
