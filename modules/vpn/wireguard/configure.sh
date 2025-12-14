@@ -13,17 +13,21 @@ function vpn_wireguard_configure() {
     # 1. DEFINE PATHS
     WG_CONF="/etc/wireguard/wg0.conf"
 
-    # --- AGGRESSIVE KEY REPAIR ---
-    # 2. Strip all spaces, newlines, and invisible characters first.
-    local RAW_KEY=$(echo "$ONYX_VPN_PRIVATE_KEY" | tr -d ' \n\r')
-    
-    # 3. Check if the key ends with '='. If not, append it.
-    if [[ "$RAW_KEY" != *"=" ]]; then
-        log_warning "Key missing trailing '='. Auto-repairing..."
-        ONYX_VPN_PRIVATE_KEY="${RAW_KEY}="
-    else
-        ONYX_VPN_PRIVATE_KEY="$RAW_KEY"
-    fi
+    # 2. --- TARGETED FIX: UNIVERSAL KEY REPAIR ---
+    repair_key() {
+        local k=$(echo "$1" | tr -d ' \n\r')
+        # We don't care what the last letters are.
+        # We ONLY care if the '=' is missing.
+        if [[ -n "$k" && "$k" != *"=" ]]; then
+            echo "${k}="
+        else
+            echo "$k"
+        fi
+    }
+
+    # 3. Fix Private AND Public keys automatically
+    ONYX_VPN_PRIVATE_KEY=$(repair_key "$ONYX_VPN_PRIVATE_KEY")
+    ONYX_VPN_PUBKEY=$(repair_key "$ONYX_VPN_PUBKEY")
     
     # 4. CHECK FOR REQUIRED VARIABLES
     # In V2, these will come from the parsed 'onyx.yml'
