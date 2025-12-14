@@ -12,6 +12,13 @@ function vpn_wireguard_configure() {
 
     # 1. DEFINE PATHS
     WG_CONF="/etc/wireguard/wg0.conf"
+
+    # --- TARGETED FIX: SELF-HEALING KEY ---
+    # Check if key is truncated (43 chars). If so, append '='
+    if [ ${#ONYX_VPN_PRIVATE_KEY} -eq 43 ]; then
+        log_warning "Key is truncated (43 chars). Auto-appending '='..."
+        ONYX_VPN_PRIVATE_KEY="${ONYX_VPN_PRIVATE_KEY}="
+    fi
     
     # 2. CHECK FOR REQUIRED VARIABLES
     # In V2, these will come from the parsed 'onyx.yml'
