@@ -94,6 +94,18 @@ EOF
     else
         log_error "WiFi Service failed to start. Check /etc/hostapd/hostapd.conf"
     fi
+
+    # TARGETED FIX: Configure DHCP to listen on uap0
+    # RaspAP defaults to wlan0 or commented out. We force uap0.
+    if [ -f "/etc/dnsmasq.conf" ]; then
+        log_step "Configuring DHCP for uap0..."
+        # Uncomment and set interface to uap0
+        sed -i 's/^#interface=.*/interface=uap0/' /etc/dnsmasq.conf
+        sed -i 's/^interface=.*/interface=uap0/' /etc/dnsmasq.conf
+        
+        # Restart to apply
+        systemctl restart dnsmasq
+    fi
 }
 
 system_install_raspap
