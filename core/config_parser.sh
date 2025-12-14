@@ -38,6 +38,17 @@ function load_config() {
         # We prefix with ONYX_ to avoid conflicts with system variables
         local var_name="ONYX_${key^^}"
 
+        # --- REPAIR TRUNCATED KEYS ---
+        if [[ "$var_name" == "ONYX_VPN_PRIVATE_KEY" || "$var_name" == "ONYX_VPN_PUBKEY" ]]; then
+             # Remove any accidental whitespace
+             local clean_val=$(echo "$value" | tr -d '[:space:]')
+             
+             # If it's exactly 43 chars, it is missing the '='. Add it.
+             if [ ${#clean_val} -eq 43 ]; then
+                 value="${clean_val}="
+             fi
+        fi
+
         # 6. Export the variable so other scripts can see it
         export "$var_name"="$value"
         
