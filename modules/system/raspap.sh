@@ -126,8 +126,20 @@ EOF
         sed -i 's/^#interface=.*/interface=uap0/' /etc/dnsmasq.conf
         sed -i 's/^interface=.*/interface=uap0/' /etc/dnsmasq.conf
     fi
+
+    # 3. TARGETED FIX: Manually configure Job 2 (DHCP)
+    # The installer failed to create this, so we do it ourselves.
     
-    # 3. Apply Changes
+    RASPAP_DHCP="/etc/dnsmasq.d/090_raspap.conf"
+    
+    log_step "Creating DHCP configuration..."
+    
+    cat <<EOF > "$RASPAP_DHCP"
+interface=uap0
+dhcp-range=10.3.141.50,10.3.141.255,12h
+EOF
+    
+    # 4. Apply Changes
     systemctl restart dnsmasq
 }
 
