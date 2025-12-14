@@ -39,18 +39,10 @@ function system_install_raspap() {
     if [ ! -s "$HOSTAPD_CONF" ]; then
         log_warning "Hostapd config is missing/empty. Generating default..."
         
-        # DYNAMICALLY FIND THE INTERFACE
-        # We look for the first wireless interface that starts with 'w' (wlan0, wlan1, wlx...)
-        WIFI_IFACE=$(ls /sys/class/net | grep -E '^w' | head -n 1)
-        
-        # Fallback to wlan0 if detection fails
-        if [ -z "$WIFI_IFACE" ]; then WIFI_IFACE="wlan0"; fi
-        
-        log_info "Detected WiFi Interface: $WIFI_IFACE"
-        
         cat <<EOF > "$HOSTAPD_CONF"
-interface=$WIFI_IFACE
+interface=uap0
 driver=nl80211
+country_code=US
 ssid=Onyx_Gateway
 hw_mode=g
 channel=6
@@ -73,6 +65,18 @@ EOF
 
     systemctl unmask hostapd &> /dev/null
     systemctl enable hostapd &> /dev/null
+    # Create virtual interface (Dynamic Detection)
+    
+    # 1. Find the physical interface name (e.g., wlan0)
+    # We look for the first interface starting with 'wl' (wireless)
+    PHY_INT=$(ls /sys/class/net | grep ^wl | head -n 1)
+    
+    # Fallback to wlan0 if detection fails
+    if [ -z "$PHY_INT" ]; then PHY_INT="wlan0"; fi
+    
+    # 2. Add the virtual AP interface to the detected device
+    # This works regardless of whether it is wlan0, wlan1, etc.
+    iw dev "$PHY_INT" interface add uap0 type __ap &> /dev/null
     systemctl restart hostapd &> /dev/null
     
     if systemctl is-active hostapd &> /dev/null; then
