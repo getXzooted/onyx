@@ -17,13 +17,7 @@ function dns_configure_unbound() {
 
     log_header "CONFIGURING UNBOUND DNS"
 
-    # 2. Install Package (Idempotent)
-    if ! command -v unbound &> /dev/null; then
-        log_step "Installing Unbound..."
-        apt-get install -y -qq unbound
-    fi
-
-    # 3. Apply Pi Zero Optimization Config (Strict Port from V1)
+    # 2. Apply Pi Zero Optimization Config (Strict Port from V1)
     CONFIG_FILE="/etc/unbound/unbound.conf.d/pi-zero.conf"
     log_step "Writing optimized config to $CONFIG_FILE..."
 
@@ -57,6 +51,12 @@ server:
     msg-cache-size: 25m
     so-rcvbuf: 1m
 EOF
+
+    # 3. Install Package (Idempotent)
+    if ! command -v unbound &> /dev/null; then
+        log_step "Installing Unbound..."
+        apt-get install -y -qq unbound
+    fi
 
     # 4. Unmask, Enable, Restart, and Verify
     # We unmask to prevent the specific "masked" error you encountered.
