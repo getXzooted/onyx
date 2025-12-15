@@ -21,6 +21,8 @@ function dns_configure_unbound() {
     CONFIG_FILE="/etc/unbound/unbound.conf.d/pi-zero.conf"
     log_step "Writing optimized config to $CONFIG_FILE..."
 
+    mkdir -p /etc/unbound/unbound.conf.d
+    
     cat <<EOF > "$CONFIG_FILE"
 server:
     # Listening Info
