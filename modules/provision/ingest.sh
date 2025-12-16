@@ -23,6 +23,10 @@ function parse_wg_file() {
     local address=$(grep -m1 "^Address" "$source_file" | cut -d '=' -f2 | xargs)
     local pub_key=$(grep -m1 "^PublicKey" "$source_file" | cut -d '=' -f2 | xargs)
     
+    # Repair Keys (add '=' back if missing)
+    local priv_key=$(repair_key "$priv_key")
+    local pub_key=$(repair_key "$pub_key")
+    
     # Endpoint often has host:port, we need to split them usually, 
     # but our config parser expects endpoint and port separately or together.
     # Let's handle the split for safety.
