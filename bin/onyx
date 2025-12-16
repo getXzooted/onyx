@@ -140,7 +140,7 @@ case "$COMMAND" in
 
     update)
         log_header "RUNNING UPDATE MANAGER"
-        source "$ONYX_ROOT/modules/core/update.sh"
+        source "$ONYX_ROOT/core/update.sh"
         core_update "$2"
         ;;
 
