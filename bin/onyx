@@ -138,6 +138,12 @@ case "$COMMAND" in
         fi
         ;;
 
+    update)
+        log_header "RUNNING UPDATE MANAGER"
+        source "$ONYX_ROOT/modules/core/update.sh"
+        core_update "$2"
+        ;;
+
     *)
         show_usage
         exit 1
