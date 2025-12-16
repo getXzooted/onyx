@@ -34,3 +34,16 @@ function log_error() {
 function log_step() {
     echo -e "${BLUE} > ${NC} $1"
 }
+
+# --- GLOBAL UTILITIES ---
+
+function repair_key() {
+    local k=$(echo "$1" | tr -d ' \n\r')
+    # We don't care what the last letters are.
+    # We ONLY care if the '=' is missing.
+    if [[ -n "$k" && "$k" != *"=" ]]; then
+        echo "${k}="
+    else
+        echo "$k"
+    fi
+}
