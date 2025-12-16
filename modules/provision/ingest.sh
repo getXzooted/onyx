@@ -51,6 +51,18 @@ EOF
 }
 
 function provision_ingest() {
+    
+    # This logic sets the variables that the rest of the function uses.
+    if [ -n "$1" ]; then
+        if [[ "$1" == *".yml" ]]; then
+            CONFIG_SOURCE="$1"
+            WG_SOURCE="" 
+        else
+            WG_SOURCE="$1"
+            CONFIG_SOURCE="" 
+        fi
+    fi
+
     local PROVISION_NEEDED=false
 
     # SCENARIO A: User dropped a full onyx.yml

@@ -88,6 +88,14 @@ case "$COMMAND" in
         
     provision)
         log_header "PROVISIONING SYSTEM"
+
+        # Check if a config file path is provided as an argument
+        if [ -n "$2" ]; then
+             source "$MODULES_DIR/provision/ingest.sh"
+             # Pass the file path to the ingest function
+             provision_ingest "$2"
+             exit $?
+        fi
         
         # 1. LOAD CONFIG
         # We need the variables (ONYX_VPN_ENDPOINT, etc.) to be loaded first!
