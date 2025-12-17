@@ -75,6 +75,18 @@ case "$COMMAND" in
             # ==========================================
             log_header "RESUMING INSTALLATION (PHASE 2)"
             
+            # Ask the OS if the clock is synced.
+            log_warning "Waiting for system time synchronization..."
+            
+            # Loop until the OS explicitly reports 'yes'
+            until [ "$(timedatectl show -p NTPSynchronized --value)" == "yes" ]; do
+                echo -n "."
+                sleep 1
+            done
+            
+            echo ""
+            log_success "Time synchronized. Proceeding."
+            
             log_info "Waiting for active internet connection..."
             until ping -c 1 -W 2 google.com > /dev/null 2>&1; do
                 echo -n "."
