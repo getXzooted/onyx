@@ -26,11 +26,18 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# Interface Settings
-# Adjust these if your Pi Zero uses different names (e.g., wlan0/eth0)
-WAN_IFACE="eth0"
+# --- INTERFACE SETTINGS ---
+# WAN: Auto-detect the internet source (eth0, end0, or usb0)
+WAN_IFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
+
+# VPN: The WireGuard Interface
 VPN_IFACE="wg0"
-LAN_IFACE="wlan0"
+
+# LAN: Your specific AP interface
+LAN_IFACE="uap0" 
+
+# Fallback: If auto-detect fails, default to eth0
+if [ -z "$WAN_IFACE" ]; then WAN_IFACE="eth0"; fi
 
 while true; do
     clear
