@@ -53,7 +53,67 @@ function show_usage() {
 COMMAND="$1"
 
 case "$COMMAND" in
+
     install)
+        # Import the Resume Logic
+        source "$MODULES_DIR/system/resume.sh"
+
+        # CHECK: Are we resuming from a reboot?
+        if system_check_resume_state; then
+            # ==========================================
+            # PHASE 2: APPLICATION LAYER (Post-Reboot)
+            # ==========================================
+            log_header "RESUMING INSTALLATION (PHASE 2)"
+            
+            # 1. DNS Services (Unbound)
+            log_info "Phase 2a: DNS Services"
+            source "$MODULES_DIR/dns/configure_unbound.sh"
+            source "$MODULES_DIR/dns/set_routing.sh"
+            # (Assuming these scripts auto-run their main functions or you add them here)
+
+            # 2. RaspAP Hotspot (The Web Interface)
+            log_info "Phase 2b: RaspAP Hotspot"
+            source "$MODULES_DIR/system/raspap.sh"
+            
+            # 3. Dashboard (The CLI Monitor)
+            log_info "Phase 2c: CLI Dashboard"
+            source "$MODULES_DIR/system/dashboard.sh"
+            system_install_dashboard
+
+            # 4. Auto-Provisioning Service (The USB Watcher)
+            log_info "Phase 2d: Auto-Provisioning Service"
+            source "$MODULES_DIR/provision/install_service.sh"
+            provision_install_service
+
+            # 5. Secure Uplink (Final Lock)
+            log_info "Phase 2e: Securing Uplink"
+            source "$MODULES_DIR/system/tuning.sh"
+            system_secure_uplink
+            
+            # 6. Cleanup (Delete the resume service)
+            system_cleanup_resume
+            
+            log_success "ONYX INSTALLATION COMPLETE."
+            log_info "Run 'sudo onyx monitor' to view dashboard."
+            
+        else
+            # ==========================================
+            # PHASE 1: SYSTEM LAYER (Pre-Reboot)
+            # ==========================================
+            log_header "STARTING INSTALLATION (PHASE 1)"
+            
+            # 1. System Bootstrap (Updates)
+            log_info "Phase 1: System Bootstrap & Hardening"
+            source "$MODULES_DIR/system/bootstrap.sh"
+            source "$MODULES_DIR/system/hardening.sh"
+            
+            # 2. Schedule Reboot & Resume
+            # This creates the service and reboots the machine.
+            system_setup_resume
+        fi
+        ;;
+
+    installOld)
         log_header "STARTING ONYX INSTALLATION"
         
         # 1. System Setup
