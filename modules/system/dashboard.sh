@@ -68,13 +68,29 @@ while true; do
     echo "--------------------------------------"
 
     # --- NETWORK TRAFFIC ---
-    # Measures current throughput
-    STATS=$(ifstat -i $WAN_IFACE 1 1 | tail -1)
-    RX=$(echo $STATS | awk '{print $1}')
-    TX=$(echo $STATS | awk '{print $2}')
-    
-    echo -e "TRAFFIC: Down: ${GREEN}${RX} KB/s${NC} | Up: ${YELLOW}${TX} KB/s${NC}"
+    # Get raw KB/s
+    STATS=$(ifstat -i $WAN_IFACE 1 1 | tail -n 1)
+    RX_RAW=$(echo $STATS | awk '{print $1}')
+    TX_RAW=$(echo $STATS | awk '{print $2}')
 
+    # Logic: If > 1024, show MB. If < 1024, show KB.
+    if (( $(echo "$RX_RAW > 1024" | bc -l) )); then
+        RX=$(echo "scale=2; $RX_RAW / 1024" | bc)
+        RX_UNIT="MB/s"
+    else
+        RX=$RX_RAW
+        RX_UNIT="KB/s"
+    fi
+
+    if (( $(echo "$TX_RAW > 1024" | bc -l) )); then
+        TX=$(echo "scale=2; $TX_RAW / 1024" | bc)
+        TX_UNIT="MB/s"
+    else
+        TX=$TX_RAW
+        TX_UNIT="KB/s"
+    fi
+    
+    echo -e "TRAFFIC: Down: ${GREEN}${RX} ${RX_UNIT}${NC} | Up: ${YELLOW}${TX} ${TX_UNIT}${NC}"
     # --- CLIENTS ---
     # Counts devices connected to the local hotspot
     CLIENTS=$(ip neigh show dev $LAN_IFACE | grep "REACHABLE" | wc -l)
