@@ -65,6 +65,14 @@ case "$COMMAND" in
             # ==========================================
             log_header "RESUMING INSTALLATION (PHASE 2)"
             
+            log_info "Waiting for active internet connection..."
+            until ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1; do
+                echo -n "."
+                sleep 2
+            done
+            echo ""
+            log_success "Connection Confirmed. Proceeding..."
+
             # 1. DNS Services (Unbound)
             log_info "Phase 2a: DNS Services"
             source "$MODULES_DIR/dns/configure_unbound.sh"
