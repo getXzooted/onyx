@@ -34,7 +34,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/onyx install
+ExecStart=/bin/bash -c '/usr/local/bin/onyx install > /var/log/onyx_resume.log 2>&1'
 StandardOutput=journal+console
 User=root
 
