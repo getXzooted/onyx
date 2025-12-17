@@ -7,10 +7,20 @@
 
 # 1. ESTABLISH ROOT CONTEXT
 # We use readlink to find the actual project folder, even if this script is a symlink.
+# 1. ESTABLISH ROOT CONTEXT
 CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
 ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+
+# --- FIX: FALLBACK FOR SYSTEMD ---
+# If dynamic detection failed (root is empty or root), force the standard path
+if [[ -z "$ONYX_ROOT" ]] || [[ "$ONYX_ROOT" == "/" ]]; then
+    ONYX_ROOT="/opt/onyx"
+fi
+# ---------------------------------
+
 CORE_DIR="$ONYX_ROOT/core"
 MODULES_DIR="$ONYX_ROOT/modules"
+
 
 # 2. LOAD DEPENDENCIES
 # Logger is required for all scripts
