@@ -162,6 +162,22 @@ case "$COMMAND" in
         system_configure_gui
         ;;
 
+    # === INSTALL DASHBOARD ===
+    dashboard)
+        source "$MODULES_DIR/system/dashboard.sh"
+        system_install_dashboard
+        ;;
+
+    # === RUN MONITOR ===
+    monitor)
+        # Verify it is installed before trying to run it
+        if [ -f "/usr/local/bin/onyx-dash" ]; then
+            /usr/local/bin/onyx-dash
+        else
+            log_error "Dashboard not found. Run 'sudo onyx dashboard' first."
+        fi
+        ;;
+
     *)
         show_usage
         exit 1
