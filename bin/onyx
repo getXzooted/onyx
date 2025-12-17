@@ -76,7 +76,7 @@ case "$COMMAND" in
             log_header "RESUMING INSTALLATION (PHASE 2)"
             
             log_info "Waiting for active internet connection..."
-            until ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1; do
+            until ping -c 1 -W 2 google.com > /dev/null 2>&1; do
                 echo -n "."
                 sleep 2
             done
