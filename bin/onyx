@@ -131,7 +131,23 @@ case "$COMMAND" in
             log_info "Phase 1: System Bootstrap & Hardening"
             source "$MODULES_DIR/system/bootstrap.sh"
             source "$MODULES_DIR/system/hardening.sh"
-            
+
+            log_info "Optimizing Memory for Pi Zero (ZRAM)..."
+            # Install the tool
+            apt-get update && apt-get install -y zram-tools
+
+            # Set the config: 60% of RAM as compressed swap
+            # This effectively gives your 512MB Pi roughly 800MB of breathing room.
+            cat <<EOF > /etc/default/zramswap
+ZRAM_SIZE=256M
+ZRAM_ALGORITHM=lz4
+SWAP_PRIORITY=100
+EOF
+
+            # Start it immediately
+            systemctl restart zramswap
+            log_success "ZRAM Active."
+
             # 2. Schedule Reboot & Resume
             # This creates the service and reboots the machine.
             system_setup_resume
@@ -276,5 +292,21 @@ case "$COMMAND" in
     *)
         show_usage
         exit 1
+        ;;
+
+    ssh)
+        case "$2" in
+            on|enable)
+                systemctl enable --now ssh
+                log_success "SSH Service Enabled."
+                ;;
+            off|disable)
+                systemctl disable --now ssh
+                log_warning "SSH Service Disabled. Remote access locked."
+                ;;
+            *)
+                echo "Usage: sudo onyx ssh [on|off]"
+                ;;
+        esac
         ;;
 esac
