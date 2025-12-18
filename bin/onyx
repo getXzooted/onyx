@@ -139,7 +139,12 @@ case "$COMMAND" in
             # 4. Auto-Provisioning Service (The USB Watcher)
             log_info "Phase 2d: Auto-Provisioning Service"
             source "$MODULES_DIR/provision/install_service.sh"
-            provision_install_service
+            source "$MODULES_DIR/provision/ingest.sh"
+            
+            # We also reboot in case no drag-and-drop happens.
+            log_info "System will reboot now to continue installation..."
+            sleep 3
+            reboot
         fi
         ;;
 
