@@ -46,9 +46,10 @@ EOF
     systemctl enable onyx-resume.service
     log_success "Resume service armed."
     
-    log_warning "SYSTEM WILL REBOOT IN 5 SECONDS..."
-    sleep 5
-    reboot
+    # log_warning "SYSTEM WILL REBOOT IN 5 SECONDS..."
+    # sleep 5
+    # reboot
+    # We let the ingest/provision function handle the reboot now to create drag and drop flow.
 }
 
 function system_cleanup_resume() {

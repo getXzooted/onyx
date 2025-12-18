@@ -75,11 +75,6 @@ case "$COMMAND" in
             # ==========================================
             log_header "RESUMING INSTALLATION (PHASE 2)"
 
-            # Restore user configuration and variables
-            [ -f "$ONYX_ROOT/config/onyx.yml" ] && source "$ONYX_ROOT/config/onyx.yml"
-            export $(cut -d= -f1 "$ONYX_ROOT/config/onyx.yml" | grep -v '^#')
-            log_info "Restored configuration from onyx.yml"
-
             # Ask the OS if the clock is synced.
             log_warning "Waiting for system time synchronization..."
             
@@ -115,11 +110,6 @@ case "$COMMAND" in
             source "$MODULES_DIR/system/dashboard.sh"
             system_install_dashboard
 
-            # 4. Auto-Provisioning Service (The USB Watcher)
-            log_info "Phase 2d: Auto-Provisioning Service"
-            source "$MODULES_DIR/provision/install_service.sh"
-            provision_install_service
-
             # 5. Secure Uplink (Final Lock)
             log_info "Phase 2e: Securing Uplink"
             source "$MODULES_DIR/system/tuning.sh"
@@ -145,6 +135,11 @@ case "$COMMAND" in
             # 2. Schedule Reboot & Resume
             # This creates the service and reboots the machine.
             system_setup_resume
+
+            # 4. Auto-Provisioning Service (The USB Watcher)
+            log_info "Phase 2d: Auto-Provisioning Service"
+            source "$MODULES_DIR/provision/install_service.sh"
+            provision_install_service
         fi
         ;;
 
