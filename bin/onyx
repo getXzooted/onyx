@@ -76,9 +76,11 @@ case "$COMMAND" in
             log_header "RESUMING INSTALLATION (PHASE 2)"
 
             # Restore user configuration and variables
+            set -a
             [ -f "$ONYX_ROOT/conf/onyx.conf" ] && source "$ONYX_ROOT/conf/onyx.conf"
             export $(cut -d= -f1 "$ONYX_ROOT/conf/onyx.conf" | grep -v '^#')
-            
+            set +a
+
             # Ask the OS if the clock is synced.
             log_warning "Waiting for system time synchronization..."
             
