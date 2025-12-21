@@ -101,6 +101,16 @@ case "$COMMAND" in
             source "$MODULES_DIR/dns/set_routing.sh"
             # (Assuming these scripts auto-run their main functions or you add them here)
 
+            # --- PHASE 2 DNS LOCKDOWN ---
+            log_info "Redirecting Gateway DNS to Local Unbound..."
+
+            # Force local loopback
+            echo "nameserver 127.0.0.1" > /etc/resolv.conf
+
+            # THE POLISH: Make the file immutable (NetworkManager can't touch it)
+            chattr +i /etc/resolv.conf
+            log_success "Gateway DNS Locked to 127.0.0.1"
+
             # 2. RaspAP Hotspot (The Web Interface)
             log_info "Phase 2b: RaspAP Hotspot"
             source "$MODULES_DIR/system/raspap.sh"
