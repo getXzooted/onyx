@@ -98,6 +98,17 @@ while true; do
     
     echo "--------------------------------------"
     echo -e "Press [CTRL+C] to exit"
+
+    # --- DASHBOARD LOGIC ---
+    ORIG=$(cat /sys/block/zram0/orig_data_size)
+    COMP=$(cat /sys/block/zram0/compr_data_size)
+
+    if [ "$COMP" -gt 0 ]; then
+        RATIO=$(echo "scale=2; $ORIG / $COMP" | bc)
+        echo -e "MEM GUARD: ${CYAN}${RATIO}:1 Ratio${NC}"
+    else
+        echo -e "MEM GUARD: ${RED}Waiting for Swap...${NC}"
+    fi
     
     sleep 2
 done
