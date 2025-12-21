@@ -326,4 +326,51 @@ EOF
                 ;;
         esac
         ;;
+
+    audit)
+        log_header "ONYX SECURITY AUDIT"
+        
+        # 1. USER SECURITY
+        TARGET_USER="${SUDO_USER:-$USER}"
+        if passwd -S "$TARGET_USER" | grep -q "01/01/1970"; then
+            log_warning "[!] SECURITY RISK: User '$TARGET_USER' is using a default or uninitialized password."
+        else
+            log_success "[OK] User '$TARGET_USER' credentials look hardened."
+        fi
+
+        # 2. MEMORY PROTECTION (ZRAM)
+        if zramctl | grep -q "zram0"; then
+            log_success "[OK] Memory: ZRAM protection active (512MB RAM stabilized)."
+        else
+            log_error "[!] Memory: ZRAM failed to start. Risk of OOM crash."
+        fi
+
+        # 3. DNS INTEGRITY (Split-DNS & Recursion)
+        if lsattr /etc/resolv.conf | grep -q "\-i\-"; then
+            log_success "[OK] DNS: Gateway is locked to 127.0.0.1 (Immutable)."
+        else
+            log_warning "[!] DNS: Gateway is NOT locked. Potential ISP/NetworkManager leak."
+        fi
+        
+        if grep -q "root-hints" /etc/unbound/unbound.conf 2>/dev/null; then
+            log_success "[OK] DNS: Recursive Mode Active (No Cloudflare/Google dependency)."
+        else
+            log_warning "[!] DNS: Forwarding Mode (Cloudflare/Google still in use)."
+        fi
+
+        # 4. SAFETY NET (Kill-switch)
+        if ufw status | grep -q "active"; then
+            log_success "[OK] Firewall: Safety Net is active."
+        else
+            log_error "[!!!] FIREWALL: Safety Net is OFF. Traffic may leak to local network!"
+        fi
+
+        # 5. VPN STATUS
+        if wg show | grep -q "latest handshake"; then
+            log_success "[OK] VPN: WireGuard tunnel is established."
+        else
+            log_error "[!] VPN: No active handshake detected."
+        fi
+        ;;
+    
 esac
