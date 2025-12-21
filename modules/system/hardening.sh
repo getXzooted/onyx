@@ -10,7 +10,21 @@ fi
 
 function system_hardening() {
     log_header "SYSTEM HARDENING"
-    
+
+    # --- ONYX STEALTH: LOG-TO-RAM ---
+    log_info "Redirecting logs to Volatile RAM..."
+
+    # Install tool to manage RAM-based folders
+    apt-get install -y folder2ram
+
+    # Configure /var/log to live in RAM
+    # This ensures that even "auth.log" and "messages" vanish on reboot.
+    folder2ram -enablerecho "/var/log"
+
+    # Mount the volatile partitions
+    folder2ram -mountall
+    log_success "Forensic-Zero Active: Logs will vanish on power-off."
+        
     SYSCTL_FILE="/etc/sysctl.d/99-onyx-hardening.conf"
     
     log_step "Applying Kernel parameters to $SYSCTL_FILE..."
