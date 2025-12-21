@@ -353,11 +353,12 @@ EOF
             log_warning "[!] DNS: Forwarding Mode (Cloudflare/Google still in use)."
         fi
 
-        # 4. SAFETY NET (Kill-switch)
-        if ufw status | grep -q "active"; then
-            log_success "[OK] Firewall: Safety Net is active."
+        # 4. SAFETY NET (Kill-switch) Audit
+        # We check if your custom service is enabled and running
+        if systemctl is-active --quiet safety-net; then
+            log_success "[OK] Firewall: Safety Net Service is ACTIVE."
         else
-            log_error "[!!!] FIREWALL: Safety Net is OFF. Traffic may leak to local network!"
+            log_error "[!!!] FIREWALL: Safety Net is OFF. Traffic may leak!"
         fi
 
         # 5. VPN STATUS
