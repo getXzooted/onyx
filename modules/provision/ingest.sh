@@ -49,6 +49,8 @@ vpn_endpoint: $endpoint_ip
 vpn_port: $endpoint_port
 vpn_address: $address
 use_unbound: true # Default to secure mode
+dns_recursive: true # Default to secure mode
+
 EOF
 
     return 0
