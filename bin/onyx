@@ -353,12 +353,14 @@ EOF
             log_warning "[!] DNS: Forwarding Mode (Cloudflare/Google still in use)."
         fi
 
-        # 4. SAFETY NET (Kill-switch) Audit
-        # We check if your custom service is enabled and running
-        if systemctl is-active --quiet safety-net; then
-            log_success "[OK] Firewall: Safety Net Service is ACTIVE."
+        # 4. SAFETY NET (IPTables Kill-switch)
+        # Check if the FORWARD chain is set to DROP (Standard Onyx Kill-switch)
+        if iptables -L FORWARD -n | grep -q "policy DROP"; then
+            log_success "[OK] IPTables: Safety Net is active (Forwarding Locked)."
+        elif iptables -L FORWARD -n | grep -q "REJECT"; then
+            log_success "[OK] IPTables: Safety Net is active (Forwarding Rejected)."
         else
-            log_error "[!!!] FIREWALL: Safety Net is OFF. Traffic may leak!"
+            log_error "[!!!] IPTables: Safety Net is OFF. Traffic may leak to local network!"
         fi
 
         # 5. VPN STATUS
