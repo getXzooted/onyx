@@ -99,15 +99,24 @@ while true; do
     echo "--------------------------------------"
     echo -e "Press [CTRL+C] to exit"
 
-    # --- DASHBOARD LOGIC ---
-    ORIG=$(cat /sys/block/zram0/orig_data_size)
-    COMP=$(cat /sys/block/zram0/compr_data_size)
+    # --- DASHBOARD LOGIC (Modern Kernel Fix) ---
+    if [ -f /sys/block/zram0/mm_stat ]; then
+        # Read the consolidated stats file
+        ZRAM_STATS=$(cat /sys/block/zram0/mm_stat)
+        
+        # Pull values: $1 is original size, $2 is compressed size
+        ORIG=$(echo $ZRAM_STATS | awk '{print $1}')
+        COMP=$(echo $ZRAM_STATS | awk '{print $2}')
 
-    if [ "$COMP" -gt 0 ]; then
-        RATIO=$(echo "scale=2; $ORIG / $COMP" | bc)
-        echo -e "MEM GUARD: ${CYAN}${RATIO}:1 Ratio${NC}"
+        if [ "$COMP" -gt 0 ]; then
+            RATIO=$(echo "scale=2; $ORIG / $COMP" | bc)
+            # Display the efficiency of your RAM compression
+            echo -e "MEM GUARD: ${GREEN}${RATIO}:1 Ratio${NC}"
+        else
+            echo -e "MEM GUARD: ${YELLOW}Idle (0B Compressed)${NC}"
+        fi
     else
-        echo -e "MEM GUARD: ${RED}Waiting for Swap...${NC}"
+        echo -e "MEM GUARD: ${RED}ZRAM Device Not Found${NC}"
     fi
     
     sleep 2
