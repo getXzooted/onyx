@@ -145,20 +145,26 @@ case "$COMMAND" in
             # === MEMORY OPTIMIZATION FOR PI ZERO ===
             log_header "PHASE 1: MEMORY OPTIMIZATION"
 
-            # 2. Kill the slow SD-based swap completely
-            log_step "Disabling SD card swap..."
-            dphys-swapfile swapoff && dphys-swapfile uninstall
-            systemctl disable dphys-swapfile
+            # 2. Force release any active locks before installation
+            log_info "Releasing any active swap locks..."
+            sudo swapoff -a 2>/dev/null
+            if [ -b /dev/zram0 ]; then
+                sudo zramctl --reset /dev/zram0 2>/dev/null
+            fi
 
             # 3. Install ZRAM
             log_step "Installing ZRAM..."
             apt-get update && apt-get install -y zram-tools bc
 
-            # 4. Apply the Low-Memory Configuration
-            cat <<EOF > /etc/default/zramswap
-ZRAM_SIZE=256M
-ZRAM_ALGORITHM=lz4
-SWAP_PRIORITY=100
+            # 4. Apply the Scalable Memory Configuration
+            cat <<EOF | sudo tee /etc/default/zramswap
+# Onyx Memory Guard - Scalable Config
+# Automatically scales to 50% of available physical RAM
+PERCENTAGE=50
+# Force the high-performance algorithm for ARM processors
+ALGO=lz4
+# Ensure this swap is used first before any SD card overflow
+PRIORITY=100
 EOF
 
             # 5. Restart the service - this should now succeed without the "Busy" error
