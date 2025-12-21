@@ -326,6 +326,7 @@ EOF
                 ;;
         esac
         ;;
+        ;;
 
     audit)
         log_header "ONYX SECURITY AUDIT"
