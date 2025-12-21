@@ -132,32 +132,39 @@ case "$COMMAND" in
             source "$MODULES_DIR/system/bootstrap.sh"
             source "$MODULES_DIR/system/hardening.sh"
 
-            log_info "Optimizing Memory for Pi Zero (ZRAM)..."
-            # Install the tool
-            apt-get update && apt-get install -y zram-tools
+            # === MEMORY OPTIMIZATION FOR PI ZERO ===
+            log_header "PHASE 1: MEMORY OPTIMIZATION"
 
-            # Set the config: 60% of RAM as compressed swap
-            # This effectively gives your 512MB Pi roughly 800MB of breathing room.
+            # 2. Kill the slow SD-based swap completely
+            log_step "Disabling SD card swap..."
+            dphys-swapfile swapoff && dphys-swapfile uninstall
+            systemctl disable dphys-swapfile
+
+            # 3. Install ZRAM
+            log_step "Installing ZRAM..."
+            apt-get update && apt-get install -y zram-tools bc
+
+            # 4. Apply the Low-Memory Configuration
             cat <<EOF > /etc/default/zramswap
 ZRAM_SIZE=256M
 ZRAM_ALGORITHM=lz4
 SWAP_PRIORITY=100
 EOF
 
-            # Start it immediately
+            # 5. Restart the service - this should now succeed without the "Busy" error
             systemctl restart zramswap
-            log_success "ZRAM Active."
+            log_success "ZRAM Active (256M Compressed)"
 
-            # 2. Schedule Reboot & Resume
+            # 6. Schedule Reboot & Resume
             # This creates the service and reboots the machine.
             system_setup_resume
 
-            # 4. Auto-Provisioning Service (The USB Watcher)
+            # 7. Auto-Provisioning Service (The USB Watcher)
             log_info "Phase 2d: Auto-Provisioning Service"
             source "$MODULES_DIR/provision/install_service.sh"
             source "$MODULES_DIR/provision/ingest.sh"
             
-            # We also reboot in case no drag-and-drop happens.
+            # 8. We also reboot in case no drag-and-drop happens.
             log_info "System will reboot now to continue installation..."
             sleep 3
             reboot
