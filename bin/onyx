@@ -145,17 +145,18 @@ case "$COMMAND" in
             # === MEMORY OPTIMIZATION FOR PI ZERO ===
             log_header "PHASE 1: MEMORY OPTIMIZATION"
 
-            # 2. Force release any active locks before installation
+            # 2. Install ZRAM
+            log_step "Installing ZRAM..."
+            apt-get update && apt-get install -y zram-tools bc
+
+
+            # 3. Force release any active locks before installation
             log_info "Releasing any active swap locks..."
             sudo swapoff -a 2>/dev/null
             if [ -b /dev/zram0 ]; then
                 sudo zramctl --reset /dev/zram0 2>/dev/null
             fi
-
-            # 3. Install ZRAM
-            log_step "Installing ZRAM..."
-            apt-get update && apt-get install -y zram-tools bc
-
+            
             # 4. TARGETED FIX: Stop service before configuring to avoid 'Busy' error
             systemctl stop zramswap 2>/dev/null
 
