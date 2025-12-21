@@ -306,11 +306,6 @@ EOF
         fi
         ;;
 
-    *)
-        show_usage
-        exit 1
-        ;;
-
     ssh)
         case "$2" in
             on|enable)
@@ -325,7 +320,6 @@ EOF
                 echo "Usage: sudo onyx ssh [on|off]"
                 ;;
         esac
-        ;;
         ;;
 
     audit)
@@ -373,5 +367,9 @@ EOF
             log_error "[!] VPN: No active handshake detected."
         fi
         ;;
-    
+
+    *)
+        show_usage
+        exit 1
+        ;;
 esac
