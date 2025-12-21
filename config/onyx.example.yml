@@ -14,5 +14,9 @@ vpn_address: "10.100.0.2/24"
 # false = Use VPN Provider DNS (Faster, good privacy)
 use_unbound: true
 
+# true  = Root Hints (Recursive Mode - Zero Dependency)
+# false = Forwarding (Speed Mode - Uses external providers)
+dns_recursive: true
+
 # --- SYSTEM SETTINGS ---
 # hostname: "onyx-gateway"
