@@ -351,12 +351,23 @@ EOF
         fi
 
         # 3. DNS INTEGRITY (Split-DNS & Recursion)
-        if lsattr /etc/resolv.conf | grep -q "\-i\-"; then
+        if lsattr /etc/resolv.conf 2>/dev/null | grep -q "\-i\-"; then
             log_success "[OK] DNS: Gateway is locked to 127.0.0.1 (Immutable)."
         else
             log_warning "[!] DNS: Gateway is NOT locked. Potential ISP/NetworkManager leak."
         fi
         
+        # Check if system state matches the YAML intent
+        if [[ "$ONYX_DNS_RECURSIVE" == "true" ]]; then
+            if grep -q "root-hints" /etc/unbound/unbound.conf.d/pi-zero.conf 2>/dev/null; then
+                log_success "[OK] DNS: Recursive Mode Active (Root Hints Loaded)."
+            else
+                log_error "[!] DNS: Recursion requested in YAML but NOT active in system."
+            fi
+        else
+            log_success "[OK] DNS: Forwarding Mode (User Defined in YAML)."
+        fi
+
         if grep -q "root-hints" /etc/unbound/unbound.conf 2>/dev/null; then
             log_success "[OK] DNS: Recursive Mode Active (No Cloudflare/Google dependency)."
         else
