@@ -145,22 +145,26 @@ case "$COMMAND" in
             # === MEMORY OPTIMIZATION FOR PI ZERO ===
             log_header "PHASE 1: MEMORY OPTIMIZATION" 
 
-            # 2. Force release any active locks before installation
+            # 2. Install ZRAM
+            log_step "Installing ZRAM..."
+            apt-get update && apt-get install -y zram-tools bc
+
+            # 3. TARGETED FIX: Stop service before configuring to avoid 'Busy' error
+            systemctl stop zramswap 2>/dev/null
+            
+            # 4. Force release any active locks before installation
             log_info "Releasing any active swap locks..."
             sudo swapoff -a 2>/dev/null
             if [ -b /dev/zram0 ]; then
                 sudo zramctl --reset /dev/zram0 2>/dev/null
             fi
-
-            # 3. Install ZRAM
-            log_step "Installing ZRAM..."
-            apt-get update && apt-get install -y zram-tools bc
-
             
-            # 4. TARGETED FIX: Stop service before configuring to avoid 'Busy' error
-            systemctl stop zramswap 2>/dev/null
+            # 5. FORCE ALGO: Write directly to the kernel while the device is reset
+            # This is the ONLY way to guarantee lz4 on Trixie
+            echo lz4 | sudo tee /sys/block/zram0/comp_algorithm 2>/dev/null
+            
 
-            # 5. Apply the Scalable Memory Configuration
+            # 6. Apply the Scalable Memory Configuration
             cat <<EOF | sudo tee /etc/default/zramswap
 # Onyx Memory Guard - Scalable Config
 # Automatically scales to 50% of available physical RAM
@@ -171,20 +175,20 @@ ALGO=lz4
 PRIORITY=100
 EOF
 
-            # 6. Restart the service - this should now succeed without the "Busy" error
+            # 7. Restart the service - this should now succeed without the "Busy" error
             systemctl restart zramswap
             log_success "ZRAM Active (lz4 Compression, 50% RAM)"
 
-            # 7. Schedule Reboot & Resume
+            # 8. Schedule Reboot & Resume
             # This creates the service and reboots the machine.
             system_setup_resume
 
-            # 8. Auto-Provisioning Service (The USB Watcher)
+            # 9. Auto-Provisioning Service (The USB Watcher)
             log_info "Phase 2d: Auto-Provisioning Service"
             source "$MODULES_DIR/provision/install_service.sh"
             source "$MODULES_DIR/provision/ingest.sh"
             
-            # 9. We also reboot in case no drag-and-drop happens.
+            # 10. We also reboot in case no drag-and-drop happens.
             log_info "System will reboot now to continue installation..."
             sleep 3
             reboot
@@ -366,12 +370,6 @@ EOF
             fi
         else
             log_success "[OK] DNS: Forwarding Mode (User Defined in YAML)."
-        fi
-
-        if grep -q "root-hints" /etc/unbound/unbound.conf 2>/dev/null; then
-            log_success "[OK] DNS: Recursive Mode Active (No Cloudflare/Google dependency)."
-        else
-            log_warning "[!] DNS: Forwarding Mode (Cloudflare/Google still in use)."
         fi
 
         # 4. SAFETY NET (IPTables Kill-switch)
