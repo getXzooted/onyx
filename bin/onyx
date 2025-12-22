@@ -357,10 +357,11 @@ EOF
         fi
 
         # 2. MEMORY PROTECTION (Hardened Check)
-        if systemctl is-active zramswap >/dev/null && [ "$(cat /sys/block/zram0/comp_algorithm | grep -o '\[.*\]')" == "[lz4]" ]; then
-            log_success "[OK] Memory: ZRAM (lz4) active and competitors masked."
+        ALGO_CHECK=$(zramctl --noheadings --output ALGORITHM /dev/zram0 2>/dev/null)
+        if [[ "$ALGO_CHECK" == "lz4" ]]; then
+            log_success "[OK] Memory: ZRAM Hardware Lock Active (lz4)."
         else
-            log_error "[!] Memory: ZRAM algorithm mismatch or competitors active."
+            log_error "[!] Memory: ZRAM algorithm mismatch (Found: $ALGO_CHECK)."
         fi
 
         # 3. DNS INTEGRITY (Split-DNS & Recursion)
