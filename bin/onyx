@@ -155,13 +155,22 @@ case "$COMMAND" in
             systemctl stop rpi-swap zramswap 2>/dev/null
             systemctl mask rpi-swap 2>/dev/null # Permanent prevent
             sudo swapoff -a 2>/dev/null
+            modprobe -r zram 2>/dev/null
+            modprobe zram num_devices=1
 
-            # 4. Force Reset & Algorithm Lock
+            # DYNAMIC CALCULATION: Scale to 50% of RAM
+            TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+            ZRAM_SIZE=$(echo "$TOTAL_RAM * 0.5" | bc | cut -d. -f1)
+
+            HARDWARE LOCK: Apply algorithm and dynamic size
             if [ -b /dev/zram0 ]; then
-                log_step "Applying hardware lock on lz4..."
-                sudo zramctl --reset /dev/zram0 2>/dev/null
-                # Force lz4 into the kernel while the device is reset
-                echo lz4 | sudo tee /sys/block/zram0/comp_algorithm 2>/dev/null
+                log_step "Locking hardware: ${ZRAM_SIZE}M @ lz4..."
+                # We use the successful --find flag with the new dynamic size
+                sudo zramctl --find --size "${ZRAM_SIZE}M" --algorithm lz4
+                
+                # ACTIVATE: Manual setup to bypass service configuration
+                sudo mkswap /dev/zram0
+                sudo swapon /dev/zram0 -p 100
             fi
 
             # 5. Apply the Scalable Memory Configuration
@@ -176,7 +185,7 @@ PRIORITY=100
 EOF
 
             # 6. Restart the service - this should now succeed without the "Busy" error
-            systemctl restart zramswap
+            # systemctl restart zramswap
             log_success "ZRAM Active (lz4 Compression, 50% RAM)"
 
             # 7. Schedule Reboot & Resume
