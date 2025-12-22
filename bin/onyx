@@ -151,13 +151,14 @@ case "$COMMAND" in
 
             # 3. SURGICAL STRIKE: Kill the built-in Trixie swap
             # This releases the 'Device or resource busy' error.
-            systemctl stop rpi-swap 2>/dev/null
-            systemctl mask rpi-swap 2>/dev/null
-            systemctl stop zramswap 2>/dev/null
+            log_info "Killing competing swap services..."
+            systemctl stop rpi-swap zramswap 2>/dev/null
+            systemctl mask rpi-swap 2>/dev/null # Permanent prevent
             sudo swapoff -a 2>/dev/null
 
             # 4. Force Reset & Algorithm Lock
             if [ -b /dev/zram0 ]; then
+                log_step "Applying hardware lock on lz4..."
                 sudo zramctl --reset /dev/zram0 2>/dev/null
                 # Force lz4 into the kernel while the device is reset
                 echo lz4 | sudo tee /sys/block/zram0/comp_algorithm 2>/dev/null
