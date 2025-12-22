@@ -149,22 +149,21 @@ case "$COMMAND" in
             log_step "Installing ZRAM..."
             apt-get update && apt-get install -y zram-tools bc
 
-            # 3. TARGETED FIX: Stop service before configuring to avoid 'Busy' error
+            # 3. SURGICAL STRIKE: Kill the built-in Trixie swap
+            # This releases the 'Device or resource busy' error.
+            systemctl stop rpi-swap 2>/dev/null
+            systemctl mask rpi-swap 2>/dev/null
             systemctl stop zramswap 2>/dev/null
-            
-            # 4. Force release any active locks before installation
-            log_info "Releasing any active swap locks..."
             sudo swapoff -a 2>/dev/null
+
+            # 4. Force Reset & Algorithm Lock
             if [ -b /dev/zram0 ]; then
                 sudo zramctl --reset /dev/zram0 2>/dev/null
+                # Force lz4 into the kernel while the device is reset
+                echo lz4 | sudo tee /sys/block/zram0/comp_algorithm 2>/dev/null
             fi
-            
-            # 5. FORCE ALGO: Write directly to the kernel while the device is reset
-            # This is the ONLY way to guarantee lz4 on Trixie
-            echo lz4 | sudo tee /sys/block/zram0/comp_algorithm 2>/dev/null
-            
 
-            # 6. Apply the Scalable Memory Configuration
+            # 5. Apply the Scalable Memory Configuration
             cat <<EOF | sudo tee /etc/default/zramswap
 # Onyx Memory Guard - Scalable Config
 # Automatically scales to 50% of available physical RAM
@@ -175,20 +174,20 @@ ALGO=lz4
 PRIORITY=100
 EOF
 
-            # 7. Restart the service - this should now succeed without the "Busy" error
+            # 6. Restart the service - this should now succeed without the "Busy" error
             systemctl restart zramswap
             log_success "ZRAM Active (lz4 Compression, 50% RAM)"
 
-            # 8. Schedule Reboot & Resume
+            # 7. Schedule Reboot & Resume
             # This creates the service and reboots the machine.
             system_setup_resume
 
-            # 9. Auto-Provisioning Service (The USB Watcher)
+            # 8. Auto-Provisioning Service (The USB Watcher)
             log_info "Phase 2d: Auto-Provisioning Service"
             source "$MODULES_DIR/provision/install_service.sh"
             source "$MODULES_DIR/provision/ingest.sh"
-            
-            # 10. We also reboot in case no drag-and-drop happens.
+
+            # 9. We also reboot in case no drag-and-drop happens.
             log_info "System will reboot now to continue installation..."
             sleep 3
             reboot
@@ -347,11 +346,11 @@ EOF
             log_success "[OK] User '$TARGET_USER' credentials look hardened."
         fi
 
-        # 2. MEMORY PROTECTION (ZRAM)
-        if zramctl | grep -q "zram0"; then
-            log_success "[OK] Memory: ZRAM protection active."
+        # 2. MEMORY PROTECTION (Hardened Check)
+        if systemctl is-active zramswap >/dev/null && [ "$(cat /sys/block/zram0/comp_algorithm | grep -o '\[.*\]')" == "[lz4]" ]; then
+            log_success "[OK] Memory: ZRAM (lz4) active and competitors masked."
         else
-            log_error "[!] Memory: ZRAM failed to start. Risk of OOM crash."
+            log_error "[!] Memory: ZRAM algorithm mismatch or competitors active."
         fi
 
         # 3. DNS INTEGRITY (Split-DNS & Recursion)
