@@ -1,13 +1,6 @@
 #!/bin/bash
-
-# --- COLORS ---
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# CORE: Logger Functions
+# Purpose: Standardized logging output with colors and formatting.
 
 # --- LOGGING FUNCTIONS ---
 
@@ -33,17 +26,4 @@ function log_error() {
 
 function log_step() {
     echo -e "${BLUE} > ${NC} $1"
-}
-
-# --- GLOBAL UTILITIES ---
-
-function repair_key() {
-    local k=$(echo "$1" | tr -d ' \n\r')
-    # We don't care what the last letters are.
-    # We ONLY care if the '=' is missing.
-    if [[ -n "$k" && "$k" != *"=" ]]; then
-        echo "${k}="
-    else
-        echo "$k"
-    fi
 }

@@ -11,8 +11,8 @@ echo "=== ONYX INSTALLER ==="
 
 # 2. Check Root
 if [[ $EUID -ne 0 ]]; then
-   echo "Error: Onyx must be installed as root. Try: sudo ./install.sh"
-   exit 1
+    echo "Error: Onyx must be installed as root. Try: sudo ./install.sh"
+    exit 1
 fi
 
 # 3. Move/Clone to /opt/onyx (The Standard Location)
