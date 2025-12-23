@@ -6,6 +6,8 @@
 source "$ONYX_ROOT/modules/network/vlan_manager.sh"
 source "$ONYX_ROOT/modules/network/firewall_builder.sh"
 source "$ONYX_ROOT/modules/system/gadget_mode.sh"
+source "$ONYX_ROOT/modules/system/aa_installer.sh"
+
 
 # ------------------------------------------------------------------------------
 # FUNCTION: product_deploy_aa_service
@@ -74,6 +76,7 @@ function product_setup_android_auto() {
     fi
 
     # 5. Auto-Deploy & Start Service
+    system_install_aa_binary
     product_deploy_aa_service
 
     # 6. Service Activation
