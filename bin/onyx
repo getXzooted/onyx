@@ -400,6 +400,108 @@ EOF
         fi
         ;;
 
+    auto)
+        # ==========================================================================
+        # COMMAND: auto
+        # USAGE: sudo onyx auto [on|off]
+        # PURPOSE: Toggles Automotive Gateway (Android Auto / Gadget Mode)
+        # ==========================================================================
+        
+        # 1. Source Required Libraries (Script 2)
+        source "$MODULES_DIR/network/vlan_manager.sh"
+        source "$MODULES_DIR/network/firewall_builder.sh"
+        source "$MODULES_DIR/system/android_auto.sh"
+
+        case "$2" in
+            on|enable)
+                log_header "ACTIVATING AUTOMOTIVE GATEWAY"
+
+                # Trigger the Product Logic (Script 3)
+                # This function handles VLANs, Firewall Injections, and Gadget Mode
+                product_setup_android_auto
+                
+                log_success "Automotive Gateway is now ACTIVE."
+                log_info "Run 'sudo onyx status' to verify network isolation."
+                ;;
+
+            off|disable)
+                log_header "DEACTIVATING AUTOMOTIVE GATEWAY"
+                
+                # 1. Shut down the proxy engine
+                log_step "Stopping Proxy Engine..."
+                systemctl stop android-proxy-rs 2>/dev/null
+                systemctl disable android-proxy-rs 2>/dev/null
+                
+                # 2. Tear down the VLAN hardware
+                log_step "Removing VLAN interface..."
+                ip link delete "vlan${ONYX_AA_VLAN_ID}" 2>/dev/null
+                
+                # 3. Cleanup DHCP
+                log_step "Cleaning DHCP leases..."
+                rm -f "/etc/dnsmasq.d/10-vlan${ONYX_AA_VLAN_ID}.conf"
+                systemctl restart dnsmasq
+                
+                log_warning "Car Mode disabled. Note: USB Gadget changes require a reboot to fully revert."
+                log_info "Run 'sudo onyx provision' to reset firewall to default state."
+                ;;
+
+            *)
+                echo -e "Usage: sudo onyx auto [on|off]"
+                exit 1
+                ;;
+        esac
+        ;;
+    
+    auto_status)
+        # === 5. AUTOMOTIVE GATEWAY (Android Auto) ===
+        echo -e "\n${BLUE}=== 5. AUTOMOTIVE GATEWAY ===${NC}"
+
+        # Detect VLAN from config (Loaded via onyx CLI)
+        AA_IFACE="vlan${ONYX_AA_VLAN_ID:-20}"
+
+        # 1. Hardware Check
+        echo -n "• AA VLAN ($AA_IFACE):  "
+        if ip link show "$AA_IFACE" &>/dev/null; then
+            AA_IP=$(ip -4 addr show "$AA_IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+            echo -e "${GREEN}ACTIVE ($AA_IP)${NC}"
+        else
+            echo -e "${YELLOW}INACTIVE / DISABLED${NC}"
+        fi
+
+        # 2. Proxy Service Check
+        echo -n "• Proxy Engine:   "
+        if systemctl is-active android-proxy-rs &>/dev/null; then
+            echo -e "${GREEN}RUNNING (Port: ${ONYX_AA_PROXY_PORT:-5000})${NC}"
+        else
+            echo -e "${RED}STOPPED${NC}"
+        fi
+
+        # 3. Security Isolation Check
+        echo -n "• Network Isolation: "
+        # Check if a DROP rule exists between the AA VLAN and the main Hotspot (uap0)
+        if iptables -L FORWARD -n | grep -q "DROP.*$AA_IFACE.*uap0"; then
+            echo -e "${GREEN}SECURED (Isolated from LAN)${NC}"
+        else
+            echo -e "${YELLOW}OPEN (Shared with LAN)${NC}"
+        fi
+
+        # 4. Handshake Port Check
+        echo -n "• Handshake Ports:  "
+        if iptables -L INPUT -n | grep -q "${ONYX_AA_TCP_PORTS%%,*}"; then
+            echo -e "${GREEN}OPEN (Listening for Phone)${NC}"
+        else
+            echo -e "${RED}CLOSED (Handshake will fail)${NC}"
+        fi
+
+        # 5. Uplink Strategy
+        echo -n "• Uplink Strategy:  "
+        if [[ "$ONYX_AA_VPN_ONLY" == "true" ]]; then
+            echo -e "${BLUE}VPN-ONLY (High Privacy)${NC}"
+        else
+            echo -e "${YELLOW}CAR-MODE (Direct WAN / High Stability)${NC}"
+        fi
+        ;;
+
     *)
         show_usage
         exit 1
