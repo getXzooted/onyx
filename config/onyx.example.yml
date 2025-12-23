@@ -18,5 +18,28 @@ use_unbound: true
 # false = Forwarding (Speed Mode - Uses external providers)
 dns_recursive: true
 
+# --- ANDROID AUTO SETTINGS ---
+aa_enabled: true
+aa_vlan_id: 20
+aa_vlan_ip: "10.40.0.1"
+aa_vlan_netmask: "255.255.255.0"
+aa_enabled: true
+aa_gadget_mode: true        # New: Set to true to enable USB peripheral mode
+
+
+# --- PORT CONFIGURATION ---
+# Wireless Android Auto typically requires these ports for the handshake
+aa_proxy_port: 5000         # The port for android-proxy-rs
+aa_tcp_ports: "5288,5272"   # Standard AA ports
+aa_udp_ports: "5272,5288"
+
+# --- NETWORK ISOLATION ---
+# Prevent AA VLAN from accessing the main LAN (uap0)
+aa_isolate_network: true
+
+# true  = Force all traffic through VPN (Secure)
+# false = Allow direct internet access (Stable for Vehicles/Moving)
+aa_vpn_only: false
+
 # --- SYSTEM SETTINGS ---
 # hostname: "onyx-gateway"
