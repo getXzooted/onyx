@@ -21,7 +21,7 @@ function delete_rule() {
 
 function toggle_rule() {
     local KEY=$1; local STATE=$2
-    yq -i ".hardening.$KEY = $STATE" "$ONYX_ROOT/etc/hardening.yml"
+    yq -i ".hardening.$KEY = $STATE" "$CONFIG_DIR/hardening.yml"
     log_info "Toggled $KEY to $STATE in config."
 }
 

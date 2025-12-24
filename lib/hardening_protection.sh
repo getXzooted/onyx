@@ -13,9 +13,9 @@ function panic_lock() {
 }
 
 function checkpoint_save() {
-    cp "$ONYX_ROOT/etc/hardening.yml" "$ONYX_ROOT/etc/hardening.yml.$(date +%s).bak"
+    cp "$CONFIG_DIR/hardening.yml" "$CONFIG_DIR/hardening.yml.$(date +%s).bak"
 }
 
 function verify_checksum() {
-    sha256sum "$ONYX_ROOT/etc/hardening.yml"
+    sha256sum "$CONFIG_DIR/hardening.yml"
 }

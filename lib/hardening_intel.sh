@@ -4,7 +4,7 @@
 function audit_state() {
     log_header "AUDITING SECURITY STATE"
     # Example: Check isolation barrier if YAML says true
-    local ISOLATE=$(yq '.hardening.network.isolation_barrier' "$ONYX_ROOT/etc/hardening.yml")
+    local ISOLATE=$(yq '.hardening.network.isolation_barrier' "$CONFIG_DIR/hardening.yml")
     if [[ "$ISOLATE" == "true" ]]; then
         if iptables -L FORWARD -n | grep -q "DROP.*vlan20.*uap0"; then
             log_success "Audit: Isolation Barrier is SECURE."
@@ -24,6 +24,6 @@ function simulate_rule() {
 }
 
 function export_live() {
-    iptables-save > "$ONYX_ROOT/etc/live_snapshot.rules"
-    log_success "Live ruleset exported to etc/live_snapshot.rules"
+    iptables-save > "$CONFIG_DIR/live_snapshot.rules"
+    log_success "Live ruleset exported to $CONFIG_DIR/live_snapshot.rules"
 }
