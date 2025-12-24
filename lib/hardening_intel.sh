@@ -14,7 +14,7 @@ function audit_state() {
 
         if declare -f "check_$RULE_NAME" > /dev/null; then
             if ! "check_$RULE_NAME" "$INTENT"; then
-                log_error "[DRIFT] $RULE_NAME is NOT in the desired state."
+                log_error "[DRIFT DETECTED] $RULE_NAME is NOT in the desired state."
                 ((DRIFT_COUNT++))
             fi
         fi

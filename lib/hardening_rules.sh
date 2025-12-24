@@ -6,7 +6,10 @@
 
 function check_disable_ipv6() {
     local INTENT=$1
-    [[ "$(sysctl -n net.ipv6.conf.all.disable_ipv6)" == "1" ]] && return 0 || return 1
+    local CURRENT=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
+    # If YAML says true (disable) but kernel says 0 (enabled), it's a drift
+    [[ "$INTENT" == "true" && "$CURRENT" == "0" ]] && return 1
+    return 0
 }
 
 function apply_disable_ipv6() {
