@@ -509,6 +509,7 @@ EOF
         source "$ONYX_ROOT/lib/hardening_execution.sh"
         source "$ONYX_ROOT/lib/hardening_intel.sh"
         source "$ONYX_ROOT/lib/hardening_protection.sh"
+        source "$ONYX_ROOT/lib/hardening_rules.sh"
 
         # Dependency check for YAML processing
         if ! command -v yq &> /dev/null; then
