@@ -15,6 +15,7 @@ export CORE_DIR="$ONYX_ROOT/core"
 export MODULES_DIR="$ONYX_ROOT/modules"
 export CONFIG_DIR="$ONYX_ROOT/config"
 export ONYX_YAML="$CONFIG_DIR/onyx.yml"
+export HARDENING_YAML="$CONFIG_DIR/hardening.yml"
 export ONYX_LOG_RAM="/var/log/onyx"
 export ONYX_RESUME_MARKER="/var/opt/onyx_resume_pending"
 

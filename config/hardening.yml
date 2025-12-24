@@ -1,0 +1,23 @@
+# /opt/onyx/etc/hardening.yml
+# Onyx Hardening Configuration File
+
+hardening:
+  system:
+    # --- ONYX STEALTH: LOG-TO-RAM ---
+    forensic_zero: true        # Toggles folder2ram for /var/log
+    mac_stealth: true          # Toggles wlan0 MAC randomization
+    bluetooth_locked: true     # Toggles BT hardware state
+
+  kernel:
+    # --- SYSCTL RULES ---
+    ip_forwarding: true        # net.ipv4.ip_forward=1 (Router Function)
+    ignore_redirects: true     # net.ipv4.conf.all.accept_redirects=0
+    log_martians: true         # net.ipv4.conf.all.log_martians=1
+    disable_ipv6: true         # net.ipv6.conf.all.*.disable_ipv6=1
+    no_send_redirects: true    # net.ipv4.conf.all.send_redirects=0
+
+  network:
+    # --- FIREWALL POSTURE ---
+    default_deny: true         # Policy DROP for INPUT and FORWARD
+    isolation_barrier: true    # VLAN-to-LAN separation (vlan20 -> uap0)
+    ttl_masking: true          # Mask router presence (TTL set 65)
