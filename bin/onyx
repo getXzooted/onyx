@@ -506,10 +506,10 @@ EOF
 
     hardener)
         # Source the libraries
-        source "$ONYX_ROOT/lib/execution.sh"
-        source "$ONYX_ROOT/lib/intel.sh"
-        source "$ONYX_ROOT/lib/protection.sh"
-        
+        source "$ONYX_ROOT/lib/hardening_execution.sh"
+        source "$ONYX_ROOT/lib/hardening_intel.sh"
+        source "$ONYX_ROOT/lib/hardening_protection.sh"
+
         # Dependency check for YAML processing
         if ! command -v yq &> /dev/null; then
             log_info "Installing yq dependency..."
