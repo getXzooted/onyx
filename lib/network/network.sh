@@ -15,9 +15,6 @@ if ! command -v yq &> /dev/null; then
             chmod +x /usr/local/bin/yq
 fi
 
-# Call audit function
-audit_state
-
 case "$2" in
     repair)  repair_state ;;
     panic)   panic_lock ;;
@@ -26,7 +23,7 @@ case "$2" in
     toggle)  toggle_rule "$3" "$4" ;;
     *)       echo "Usage: sudo onyx audit {repair|panic|build|delete|toggle}" ;;
 esac
-
+;;
 
 log_header "ONYX SECURITY AUDIT"
             
@@ -80,3 +77,24 @@ if wg show | grep -q "latest handshake"; then
 else
     log_error "[!] VPN: No active handshake detected."
 fi
+
+
+# 6. DRIFT DETECTION
+# Flatten YAML boolean keys
+local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$CONFIG_DIR/hardening.yml")
+local DRIFT_COUNT=0
+
+for KEY in $KEYS; do
+    local RULE_NAME="${KEY##*.}"
+    local INTENT=$(yq e ".$KEY" "$CONFIG_DIR/hardening.yml")
+
+    if declare -f "check_$RULE_NAME" > /dev/null; then
+        if ! "check_$RULE_NAME" "$INTENT"; then
+            log_error "[DRIFT DETECTED] $RULE_NAME is out of sync."
+            ((DRIFT_COUNT++))
+        fi
+    fi
+done
+
+# 7. Final Audit Summary
+audit_state
