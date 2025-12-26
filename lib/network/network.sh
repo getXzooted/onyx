@@ -26,7 +26,6 @@ case "$2" in
     toggle)  toggle_rule "$3" "$4" ;;
     *)       echo "Usage: sudo onyx audit {repair|panic|build|delete|toggle}" ;;
 esac
-;;
 
 
 log_header "ONYX SECURITY AUDIT"
