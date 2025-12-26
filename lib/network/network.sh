@@ -75,14 +75,14 @@ fi
 
 function detect_drift() {
 
-    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$CONFIG_DIR/hardening.yml")
+    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$HARDENING_YAML")
     local DRIFT_COUNT=0
     
     log_header "ONYX DRIFT DETECTION"
     
     for KEY in $KEYS; do
         local RULE_NAME="${KEY##*.}"
-        local INTENT=$(yq e ".$KEY" "$CONFIG_DIR/hardening.yml")
+        local INTENT=$(yq e ".$KEY" "$HARDENING_YAML")
 
         if declare -f "check_$RULE_NAME" > /dev/null; then
             if ! "check_$RULE_NAME" "$INTENT"; then
