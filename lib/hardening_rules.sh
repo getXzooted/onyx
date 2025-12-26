@@ -109,7 +109,13 @@ function check_forensic_zero() {
     # 0.4.1 uses tmpfs. Verify if /var/log is a mountpoint.
     if mountpoint -q /var/log; then
         # Ensure it is a folder2ram tmpfs mount
+        log_step "Verifying Forensic-Zero status..."
         if mount | grep "/var/log" | grep -q "tmpfs"; then
+            return 0
+        fi
+
+        log_step "Forensic-Zero detected, but not using tmpfs."
+        if mountpoint -q /var/log; then
             return 0
         fi
     fi
@@ -171,8 +177,16 @@ function check_safety_net() {
 function apply_safety_net() {
     if [[ "$1" == "true" ]]; then
         log_step "Repairing Safety Net (Firewall Sync)..."
-        # Simply run the generated script to restore full state
-        /usr/local/bin/safety-net.sh
+        
+        # 1. LOAD THE GENERATOR: Ensure the module is available
+        source "$ONYX_ROOT/modules/network/safety_net.sh"
+        
+        # 2. EXECUTE: Now that the file is guaranteed to exist, run it to restore internet
+        if [ -x "/usr/local/bin/safety-net.sh" ]; then
+            /usr/local/bin/safety-net.sh
+        else
+            log_error "Safety Net repair failed: Script could not be built."
+        fi
     fi
 }
 
