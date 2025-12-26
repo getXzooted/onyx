@@ -120,7 +120,6 @@ function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
         log_step "Engaging Forensic-Zero (Log-to-RAM)..."
         source "$ONYX_ROOT/modules/system/hardening.sh"
-        system_hardening
     fi
 }
 
