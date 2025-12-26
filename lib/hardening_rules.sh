@@ -19,9 +19,19 @@ function check_mac_stealth() {
 function apply_mac_stealth() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying MAC Stealth (Rotating uap0)..."
+        
+        # 1. Stop the Wireless Stack to prevent BSSID mismatch
+        systemctl stop hostapd dnsmasq &>/dev/null
+        
+        # 2. Rotate the MAC
         ip link set uap0 down
         macchanger -r uap0 &>/dev/null
         ip link set uap0 up
+        
+        # 3. Restart services to broadcast the new identity
+        systemctl start dnsmasq hostapd &>/dev/null
+        
+        log_success "MAC Stealth Applied: uap0 identity rotated."
     fi
 }
 
