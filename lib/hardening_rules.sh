@@ -120,7 +120,7 @@ function apply_forensic_zero() {
         if ! command -v folder2ram &> /dev/null; then
             apt-get update && apt-get install -y folder2ram &>/dev/null
         fi
-        folder2ram -enablesystem &>/dev/null
+        folder2ram -enable /var/log
         # Note: folder2ram often requires a reboot to fully sync
         log_warning "Forensic-Zero applied. A reboot may be required to clear the drift."
     fi
