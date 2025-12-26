@@ -88,6 +88,8 @@ function detect_drift() {
             if ! "check_$RULE_NAME" "$INTENT"; then
                 log_error "[DRIFT DETECTED] $RULE_NAME is out of sync."
                 ((DRIFT_COUNT++))
+            else
+                log_success "[OK] $RULE_NAME is in sync."
             fi
         fi
     done
