@@ -537,6 +537,7 @@ EOF
             build)   build_rule "${@:3}" ;;
             delete)  delete_rule "${@:3}" ;;
             toggle)  toggle_rule "$3" "$4" ;;
+            ""|audit) ;;
             *)       echo "Usage: sudo onyx audit {repair|panic|build|delete|toggle}" ;;
         esac
         ;;
