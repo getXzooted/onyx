@@ -106,9 +106,12 @@ function apply_bluetooth_locked() {
 }
 
 function check_forensic_zero() {
-    # Verify if folder2ram has successfully mounted logs in RAM
-    if mount | grep -q "folder2ram"; then
-        return 0
+    # 0.4.1 uses tmpfs. Verify if /var/log is a mountpoint.
+    if mountpoint -q /var/log; then
+        # Ensure it is a folder2ram tmpfs mount
+        if mount | grep "/var/log" | grep -q "tmpfs"; then
+            return 0
+        fi
     fi
     return 1
 }
@@ -116,13 +119,8 @@ function check_forensic_zero() {
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
         log_step "Engaging Forensic-Zero (Log-to-RAM)..."
-        # Ensure the tool is installed before attempting repair
-        if ! command -v folder2ram &> /dev/null; then
-            apt-get update && apt-get install -y folder2ram &>/dev/null
-        fi
-        folder2ram -enable /var/log
-        # Note: folder2ram often requires a reboot to fully sync
-        log_warning "Forensic-Zero applied. A reboot may be required to clear the drift."
+        source "$ONYX_ROOT/modules/system/hardening.sh"
+        system_hardening
     fi
 }
 
