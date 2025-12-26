@@ -71,11 +71,15 @@ fi
 
 # 6. DRIFT DETECTION
 # Flatten YAML boolean keys
-local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$CONFIG_DIR/hardening.yml")
-local DRIFT_COUNT=0
+
 
 function detect_drift() {
+
+    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$CONFIG_DIR/hardening.yml")
+    local DRIFT_COUNT=0
+    
     log_header "ONYX DRIFT DETECTION"
+    
     for KEY in $KEYS; do
         local RULE_NAME="${KEY##*.}"
         local INTENT=$(yq e ".$KEY" "$CONFIG_DIR/hardening.yml")
