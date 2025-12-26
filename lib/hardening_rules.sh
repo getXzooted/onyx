@@ -118,9 +118,38 @@ function check_forensic_zero() {
 
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
+        # --- ONYX STEALTH: LOG-TO-RAM ---
         log_step "Engaging Forensic-Zero (Log-to-RAM)..."
-        source "$ONYX_ROOT/modules/system/hardening.sh"
-    fi
+        log_info "Redirecting logs to Volatile RAM..."
+
+        # 1. Manual Download (Apt-get fails on Pi Zero for this tool)
+        if ! command -v folder2ram &> /dev/null; then
+            log_step "Downloading folder2ram v0.4.1..."
+            wget -qO /sbin/folder2ram https://raw.githubusercontent.com/bobafetthotmail/folder2ram/master/debian_package/sbin/folder2ram
+            chmod +x /sbin/folder2ram
+        fi
+
+        # 2. Manual Configuration (Since -enable is missing in 0.4.1)
+        log_step "Configuring /var/log for RAM-disk..."
+        mkdir -p /etc/folder2ram
+        # Format: type [space] path [space] options
+        echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
+
+        # 3. Enable Systemd Service
+        folder2ram -enablesystemd &>/dev/null
+
+        # 4. Critical: Release /var/log so it can be mounted without a reboot
+        log_step "Releasing /var/log from systemd-journald..."
+        journalctl --relinquish-var &>/dev/null
+        
+        # 5. Mount the partitions
+        if folder2ram -mountall; then
+            journalctl --flush &>/dev/null
+            log_success "Forensic-Zero Active: Logs now live in RAM."
+        else
+            log_warning "Forensic-Zero: Mount failed (Target Busy). A reboot is REQUIRED."
+        fi
+        fi
 }
 
 # --- NETWORK RULES ---
