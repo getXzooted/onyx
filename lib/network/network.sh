@@ -91,6 +91,8 @@ function detect_drift() {
             else
                 log_success "[OK] $RULE_NAME is in sync."
             fi
+        else
+            log_warning "No audit worker found for rule: $RULE_NAME (Skipping)"
         fi
     done
 }
