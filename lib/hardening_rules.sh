@@ -4,6 +4,21 @@
 
 # --- KERNEL RULES ---
 
+function check_mac_stealth() {
+    # Check if wlan0 is using a randomized MAC address
+    # (Compares current MAC against permanent MAC)
+    local CURRENT=$(cat /sys/class/net/uap0/address 2>/dev/null)
+    local PERM=$(ethtool -P uap0 2>/dev/null | awk '{print $3}')
+    [[ "$CURRENT" != "$PERM" ]] && return 0 || return 1
+}
+
+function apply_mac_stealth() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying MAC Stealth (Rotating uap0)..."
+        macchanger -r uap0 &>/dev/null
+    fi
+}
+
 function check_disable_ipv6() {
     local INTENT=$1
     local CURRENT=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
