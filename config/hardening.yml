@@ -19,5 +19,6 @@ hardening:
   network:
     # --- FIREWALL POSTURE ---
     default_deny: true         # Policy DROP for INPUT and FORWARD
+    safety_net: true           # Allow SSH, DNS, DHCP, NTP, ICMP
     isolation_barrier: true    # VLAN-to-LAN separation (vlan20 -> uap0)
     ttl_masking: true          # Mask router presence (TTL set 65)
