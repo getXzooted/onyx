@@ -90,14 +90,23 @@ function apply_bluetooth_locked() {
 }
 
 function check_forensic_zero() {
-    # Verify if folder2ram is active
-    systemctl is-active folder2ram &>/dev/null && return 0 || return 1
+    # Verify if folder2ram has successfully mounted logs in RAM
+    if mount | grep -q "folder2ram"; then
+        return 0
+    fi
+    return 1
 }
 
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
         log_step "Engaging Forensic-Zero (Log-to-RAM)..."
+        # Ensure the tool is installed before attempting repair
+        if ! command -v folder2ram &> /dev/null; then
+            apt-get update && apt-get install -y folder2ram &>/dev/null
+        fi
         folder2ram -enablesystem &>/dev/null
+        # Note: folder2ram often requires a reboot to fully sync
+        log_warning "Forensic-Zero applied. A reboot may be required to clear the drift."
     fi
 }
 
