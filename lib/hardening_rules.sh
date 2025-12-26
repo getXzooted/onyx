@@ -154,6 +154,28 @@ function apply_forensic_zero() {
 
 # --- NETWORK RULES ---
 
+function check_safety_net() {
+    # 1. Verify Default Policy is DROP
+    if ! iptables -L FORWARD -n | grep -q "policy DROP"; then
+        return 1
+    fi
+    
+    # 2. Verify VPN Endpoint rule is present in OUTPUT chain
+    if ! iptables -L OUTPUT -n | grep -q "$ONYX_VPN_ENDPOINT"; then
+        return 1
+    fi
+    
+    return 0
+}
+
+function apply_safety_net() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Repairing Safety Net (Firewall Sync)..."
+        # Simply run the generated script to restore full state
+        /usr/local/bin/safety-net.sh
+    fi
+}
+
 function check_isolation_barrier() {
     iptables -C FORWARD -i vlan20 -o uap0 -j DROP &>/dev/null && return 0 || return 1
 }
