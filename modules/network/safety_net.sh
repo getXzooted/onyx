@@ -11,8 +11,6 @@ function network_safety_net() {
     log_header "CONFIGURING SAFETY NET (FIREWALL)"
 
     # 1. CHECK VARIABLES
-    # The firewall explicitly allows traffic to the VPN endpoint. 
-    # If we don't have that IP, we can't create the rule.
     if [[ -z "$ONYX_VPN_ENDPOINT" || -z "$ONYX_VPN_PORT" ]]; then
         log_error "Missing VPN Endpoint/Port. Cannot generate firewall rules."
         return 1
@@ -23,55 +21,41 @@ function network_safety_net() {
 
     log_step "Generating firewall logic at $TARGET_SCRIPT..."
 
-    # 2. GENERATE FIREWALL SCRIPT (Strict Port from V1)
+    # 2. GENERATE MINIMAL ENFORCER SCRIPT
+    # Instead of a massive block of strings, this script now sources 
+    # your core Onyx libraries to apply rules dynamically.
     cat <<EOF > "$TARGET_SCRIPT"
 #!/bin/bash
-IPT="/usr/sbin/iptables"
+# ONYX Boot-time Safety Net
+source "$ONYX_ROOT/vars.sh"
+source "$ONYX_ROOT/core/logger.sh"
+source "$ONYX_ROOT/lib/hardening_execution.sh"
 
-# 1. DEFAULT POLICY: DROP (Universal Kill Switch)
-\$IPT -P INPUT DROP
-\$IPT -P FORWARD DROP
-\$IPT -P OUTPUT DROP
+# 1. Flush and Set Default Deny
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT DROP
+iptables -F
+iptables -t nat -F
 
-# 2. FLUSH OLD RULES
-\$IPT -F
-\$IPT -X
-\$IPT -t nat -F
-\$IPT -t nat -X
+# 2. Re-apply Desired State via Library Functions
+# Established/Related
+build_rule INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+build_rule OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# 3. ALLOW ESTABLISHED CONNECTIONS
-\$IPT -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-\$IPT -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-\$IPT -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+# Universal Local Access (RFC1918)
+build_rule INPUT -s 10.0.0.0/8 -j ACCEPT
+build_rule OUTPUT -d 10.0.0.0/8 -j ACCEPT
+build_rule INPUT -i lo -j ACCEPT
+build_rule OUTPUT -o lo -j ACCEPT
 
-# 4. UNIVERSAL LOCAL ACCESS (LAN & Loopback)
-\$IPT -A INPUT -s 10.0.0.0/8 -j ACCEPT
-\$IPT -A OUTPUT -d 10.0.0.0/8 -j ACCEPT
-\$IPT -A INPUT -s 172.16.0.0/12 -j ACCEPT
-\$IPT -A OUTPUT -d 172.16.0.0/12 -j ACCEPT
-\$IPT -A INPUT -s 192.168.0.0/16 -j ACCEPT
-\$IPT -A OUTPUT -d 192.168.0.0/16 -j ACCEPT
+# VPN Transport (The Only Way Out)
+build_rule OUTPUT -d $ONYX_VPN_ENDPOINT -p udp --dport $ONYX_VPN_PORT -j ACCEPT
 
-\$IPT -A INPUT -i lo -j ACCEPT
-\$IPT -A OUTPUT -o lo -j ACCEPT
-
-# 5. ALLOW DHCP
-\$IPT -A INPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
-\$IPT -A OUTPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
-
-# 6. ALLOW VPN TRANSPORT (The Only Way Out)
-\$IPT -A OUTPUT -d $ONYX_VPN_ENDPOINT -p udp --dport $ONYX_VPN_PORT -j ACCEPT
-
-# 7. ALLOW TUNNEL TRAFFIC (Inside the VPN)
-\$IPT -A INPUT -i wg0 -j ACCEPT
-\$IPT -A OUTPUT -o wg0 -j ACCEPT
-
-# 8. ENABLE FORWARDING (Leak Fix)
-\$IPT -A FORWARD -i wg0 -j ACCEPT
-\$IPT -A FORWARD -o wg0 -j ACCEPT
-
-# 9. NAT
-\$IPT -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+# NAT & Tunnel Forwarding
+iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+build_rule FORWARD -i wg0 -j ACCEPT
+build_rule FORWARD -o wg0 -j ACCEPT
 EOF
 
     chmod +x "$TARGET_SCRIPT"
@@ -92,10 +76,7 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 
-    # 4. ENABLE SERVICE
     systemctl daemon-reload
     systemctl enable safety-net &> /dev/null
-    log_success "Safety Net installed (Active on next reboot)."
+    log_success "Safety Net refactored and service enabled."
 }
-
-network_safety_net

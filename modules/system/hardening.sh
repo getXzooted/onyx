@@ -19,11 +19,11 @@ function system_hardening() {
     # Apply changes immediately
     #sysctl -p "$SYSCTL_FILE" &> /dev/null
     
-    if [ $? -eq 0 ]; then
-        log_success "Kernel hardening applied."
-    else
-        log_error "Failed to apply sysctl rules."
-    fi
+    #if [ $? -eq 0 ]; then
+    #    log_success "Kernel hardening applied."
+    #else
+    #    log_error "Failed to apply sysctl rules."
+    #fi
 }
 
 system_hardening
