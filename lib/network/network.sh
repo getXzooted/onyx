@@ -15,16 +15,6 @@ if ! command -v yq &> /dev/null; then
             chmod +x /usr/local/bin/yq
 fi
 
-case "$2" in
-    repair)  repair_state ;;
-    panic)   panic_lock ;;
-    build)   build_rule "${@:3}" ;;
-    delete)  delete_rule "${@:3}" ;;
-    toggle)  toggle_rule "$3" "$4" ;;
-    *)       echo "Usage: sudo onyx audit {repair|panic|build|delete|toggle}" ;;
-esac
-;;
-
 log_header "ONYX SECURITY AUDIT"
             
 # 1. USER SECURITY
