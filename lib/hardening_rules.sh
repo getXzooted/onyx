@@ -26,6 +26,36 @@ function apply_ignore_redirects() {
     sysctl -w net.ipv4.conf.all.accept_redirects=0 > /dev/null
 }
 
+function check_ip_forwarding() {
+    [[ "$(sysctl -n net.ipv4.ip_forward)" == "1" ]] && return 0 || return 1
+}
+
+function apply_ip_forwarding() {
+    if [[ "$1" == "true" ]]; then
+        sysctl -w net.ipv4.ip_forward=1 > /dev/null
+    fi
+}
+
+function check_log_martians() {
+    [[ "$(sysctl -n net.ipv4.conf.all.log_martians)" == "1" ]] && return 0 || return 1
+}
+
+function apply_log_martians() {
+    if [[ "$1" == "true" ]]; then
+        sysctl -w net.ipv4.conf.all.log_martians=1 > /dev/null
+    fi
+}
+
+function check_no_send_redirects() {
+    [[ "$(sysctl -n net.ipv4.conf.all.send_redirects)" == "0" ]] && return 0 || return 1
+}
+
+function apply_no_send_redirects() {
+    if [[ "$1" == "true" ]]; then
+        sysctl -w net.ipv4.conf.all.send_redirects=0 > /dev/null
+    fi
+}
+
 # --- SYSTEM RULES ---
 
 function check_bluetooth_locked() {
@@ -44,6 +74,18 @@ function apply_bluetooth_locked() {
     fi
 }
 
+function check_forensic_zero() {
+    # Verify if folder2ram is active
+    systemctl is-active folder2ram &>/dev/null && return 0 || return 1
+}
+
+function apply_forensic_zero() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Engaging Forensic-Zero (Log-to-RAM)..."
+        folder2ram -enablesystem &>/dev/null
+    fi
+}
+
 # --- NETWORK RULES ---
 
 function check_isolation_barrier() {
@@ -54,5 +96,29 @@ function apply_isolation_barrier() {
     if [[ "$1" == "true" ]]; then
         # Calls tactical function from execution lib
         build_rule FORWARD -i vlan20 -o uap0 -j DROP
+    fi
+}
+
+function check_default_deny() {
+    # Check if the global policy is DROP
+    iptables -L FORWARD -n | grep -q "policy DROP" && return 0 || return 1
+}
+
+function apply_default_deny() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Global Default Deny policy..."
+        iptables -P FORWARD DROP
+    fi
+}
+
+function check_ttl_masking() {
+    # Verify if TTL mangling is active
+    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to" && return 0 || return 1
+}
+
+function apply_ttl_masking() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying TTL Stealth Masking..."
+        iptables -t mangle -A POSTROUTING -j TTL --ttl-set 64
     fi
 }
