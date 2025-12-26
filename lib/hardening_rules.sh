@@ -5,17 +5,23 @@
 # --- KERNEL RULES ---
 
 function check_mac_stealth() {
-    # Check if wlan0 is using a randomized MAC address
-    # (Compares current MAC against permanent MAC)
+    # Verify if uap0 is using its permanent hardware MAC or a randomized one
     local CURRENT=$(cat /sys/class/net/uap0/address 2>/dev/null)
     local PERM=$(ethtool -P uap0 2>/dev/null | awk '{print $3}')
-    [[ "$CURRENT" != "$PERM" ]] && return 0 || return 1
+    
+    # If they match, the MAC is NOT rotated (Drifted)
+    if [[ "$CURRENT" == "$PERM" ]]; then
+        return 1
+    fi
+    return 0
 }
 
 function apply_mac_stealth() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying MAC Stealth (Rotating uap0)..."
+        ip link set uap0 down
         macchanger -r uap0 &>/dev/null
+        ip link set uap0 up
     fi
 }
 

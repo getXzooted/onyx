@@ -21,7 +21,7 @@ function system_bootstrap() {
     # - unbound: Recursive DNS resolver
     # - curl/git: Utilities
     # - qrencode: For generating QR codes in terminal (cool feature for later)
-    DEPENDENCIES=(wireguard iptables unbound curl git qrencode dnsmasq hostapd)
+    DEPENDENCIES=(wireguard iptables unbound curl git qrencode dnsmasq hostapd macchanger ethtool)
     
     log_step "Installing dependencies: ${DEPENDENCIES[*]}..."
     
