@@ -74,17 +74,22 @@ fi
 local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$CONFIG_DIR/hardening.yml")
 local DRIFT_COUNT=0
 
-for KEY in $KEYS; do
-    local RULE_NAME="${KEY##*.}"
-    local INTENT=$(yq e ".$KEY" "$CONFIG_DIR/hardening.yml")
+function detect_drift() {
+    log_header "ONYX DRIFT DETECTION"
+    for KEY in $KEYS; do
+        local RULE_NAME="${KEY##*.}"
+        local INTENT=$(yq e ".$KEY" "$CONFIG_DIR/hardening.yml")
 
-    if declare -f "check_$RULE_NAME" > /dev/null; then
-        if ! "check_$RULE_NAME" "$INTENT"; then
-            log_error "[DRIFT DETECTED] $RULE_NAME is out of sync."
-            ((DRIFT_COUNT++))
+        if declare -f "check_$RULE_NAME" > /dev/null; then
+            if ! "check_$RULE_NAME" "$INTENT"; then
+                log_error "[DRIFT DETECTED] $RULE_NAME is out of sync."
+                ((DRIFT_COUNT++))
+            fi
         fi
-    fi
-done
+    done
+}
+
+detect_drift
 
 # 7. Final Audit Summary
 audit_state
