@@ -529,6 +529,9 @@ EOF
         esac
         ;;
 
+    network)
+        source "$ONYX_ROOT/lib/network/network.sh"
+
     *)
         show_usage
         exit 1
