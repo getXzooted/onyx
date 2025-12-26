@@ -80,3 +80,5 @@ EOF
     systemctl enable safety-net &> /dev/null
     log_success "Safety Net refactored and service enabled."
 }
+
+network_safety_net
