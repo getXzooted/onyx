@@ -11,7 +11,7 @@ source "$ONYX_ROOT/lib/hardening_rules.sh"
 # Dependency check for YAML processing
 if ! command -v yq &> /dev/null; then
             log_info "Installing yq dependency..."
-            wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
+            wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm64 -O /usr/local/bin/yq
             chmod +x /usr/local/bin/yq
 fi
 
