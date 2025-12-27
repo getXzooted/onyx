@@ -106,20 +106,17 @@ function apply_bluetooth_locked() {
 }
 
 function check_forensic_zero() {
-    # 0.4.1 uses tmpfs. Verify if /var/log is a mountpoint.
+    function check_forensic_zero() {
+    # 1. Verify if /var/log is a mountpoint
     if mountpoint -q /var/log; then
-        # Ensure it is a folder2ram tmpfs mount
-        log_step "Verifying Forensic-Zero status..."
+        # 2. STRICT: It MUST be a tmpfs (RAM-disk) to pass audit
         if mount | grep "/var/log" | grep -q "tmpfs"; then
             return 0
         fi
-
-        log_step "Forensic-Zero detected, but not using tmpfs."
-        if mountpoint -q /var/log; then
-            return 0
-        fi
     fi
+    # If not a mountpoint or not tmpfs, it is drifted
     return 1
+}
 }
 
 function apply_forensic_zero() {
@@ -144,18 +141,23 @@ function apply_forensic_zero() {
         # 3. Enable Systemd Service
         folder2ram -enablesystemd &>/dev/null
 
-        # 4. Critical: Release /var/log so it can be mounted without a reboot
-        log_step "Releasing /var/log from systemd-journald..."
+        # 4. Stop loggers so we can mount /var/log
+        log_step "Unlocking /var/log from system loggers..."
+        systemctl stop rsyslog &>/dev/null
         journalctl --relinquish-var &>/dev/null
         
         # 5. Mount the partitions
         if folder2ram -mountall; then
+            # 6. Success: Flush and Restore services
             journalctl --flush &>/dev/null
-            log_success "Forensic-Zero Active: Logs now live in RAM."
+            systemctl start rsyslog &>/dev/null
+            log_success "Forensic-Zero Active: Logs are now in RAM."
         else
-            log_warning "Forensic-Zero: Mount failed (Target Busy). A reboot is REQUIRED."
+            # 7. Fallback: Restore loggers if mount failed
+            systemctl start rsyslog &>/dev/null
+            log_error "Forensic-Zero: Mount failed (Target Busy). Reboot required."
         fi
-        fi
+    fi
 }
 
 # --- NETWORK RULES ---
