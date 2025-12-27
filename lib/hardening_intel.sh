@@ -2,7 +2,7 @@
 # lib/hardening_intel.sh
 
 function audit_state() {
-    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$HARDENING_YAML")
+    local KEYS=$(yq e '.. | select(tag == "!!bool"or tag == "!!str") | path | join(".")' "$HARDENING_YAML")
     local DRIFT_COUNT=0
     
     log_header "ONYX DRIFT DETECTION"
@@ -26,7 +26,7 @@ function audit_state() {
 
 function repair_state() {
     log_header "ONYX SECURITY REPAIR"
-    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$ONYX_ROOT/config/hardening.yml")
+    local KEYS=$(yq e '.. | select(tag == "!!bool" or tag == "!!str") | path | join(".")' "$ONYX_ROOT/config/hardening.yml")
 
     for KEY in $KEYS; do
         local RULE_NAME="${KEY##*.}"
