@@ -21,7 +21,21 @@ if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     echo "Installing Onyx to $INSTALL_DIR..."
     mkdir -p "$INSTALL_DIR"
     cp -r . "$INSTALL_DIR"
+
+    # Backup existing config if it exists before copying
+    if [ -f "$INSTALL_DIR/config/onyx.yml" ]; then
+        cp "$INSTALL_DIR/config/onyx.yml" /tmp/onyx.yml.bak
+    fi
+
+    mkdir -p "$INSTALL_DIR"
+    cp -r . "$INSTALL_DIR"
     
+    # Restore the backup
+    if [ -f /tmp/onyx.yml.bak ]; then
+        mv /tmp/onyx.yml.bak "$INSTALL_DIR/config/onyx.yml"
+        log_success "Preserved existing onyx.yml configuration."
+    fi
+
     # Fix permissions
     chmod +x "$INSTALL_DIR/bin/onyx"
     chmod +x "$INSTALL_DIR/install.sh"
