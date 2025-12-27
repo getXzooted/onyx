@@ -149,7 +149,7 @@ function apply_forensic_zero() {
         log_step "Configuring /var/log for RAM-disk..."
         mkdir -p /etc/folder2ram
         # Format: type [space] path [space] options
-        echo "/var/log tmpfs size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
+        echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
 
         # 3. Enable Systemd Service
         folder2ram -enablesystemd &>/dev/null
