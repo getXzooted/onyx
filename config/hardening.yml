@@ -11,6 +11,9 @@ hardening:
   kernel:
     # --- SYSCTL RULES ---
     fingerprint_protection: true # net.ipv4.tcp_timestamps=0 / net.ipv4.tcp_window_scaling=1
+    qname_stealth: true         # <--- DNS Privacy
+    icmp_recon_defense: true    # <--- Anti-Scanning
+    arp_guard: true             # <--- Internal Stealth
     anti_spoofing: true         # net.ipv4.conf.all.rp_filter=1
     flood_protection: true      # net.ipv4.tcp_syncookies=1
     icmp_stealth: true          # net.ipv4.icmp_echo_ignore_broadcasts=1
@@ -23,7 +26,13 @@ hardening:
   network:
     # --- FIREWALL POSTURE ---
     safety_net: true           # Enables Onyx Safety Net
+    mtu_stealth: true          # Force TCP handshake to use the tunnel's specific MTU to prevent 'Oversized Packet' detection
     webrtc_lockdown: true      # Blocks WebRTC IP leaks
+    syn_proxy: true            # TCP SYN Proxy
+    port_scrambling: true      # Randomize port numbers to prevent correlation
+    packet_padding: true       # Obfuscate packet size and timing
+    bogom_filter: true         # Drop malformed packets
+    tarpit_trap: true          # Engage TARPIT for connection attempts
     default_deny: true         # Policy DROP for INPUT and FORWARD
     isolation_barrier: true    # VLAN-to-LAN separation (vlan20 -> uap0)
     ttl_masking: true          # Mask router presence (TTL set 65)

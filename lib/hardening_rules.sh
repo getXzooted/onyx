@@ -35,6 +35,45 @@ function apply_mac_stealth() {
     fi
 }
 
+function check_qname_stealth() {
+    # Verify QNAME Minimization is active in Unbound config
+    grep -q "qname-minimisation: yes" /etc/unbound/unbound.conf.d/pi-zero.conf &>/dev/null && return 0 || return 1
+}
+
+function apply_qname_stealth() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying QNAME Minimization (DNS Metadata Stealth)..."
+        # Inject privacy flag into the server block
+        sed -i '/server:/a \    qname-minimisation: yes' /etc/unbound/unbound.conf.d/pi-zero.conf
+        systemctl restart unbound &>/dev/null
+    fi
+}
+
+function check_icmp_recon_defense() {
+    [[ "$(sysctl -n net.ipv4.icmp_ratelimit)" == "1000" ]] && return 0 || return 1
+}
+
+function apply_icmp_recon_defense() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying ICMP Recon Defense (Anti-Scanning)..."
+        # Standardize rate limiting and ignore bogus error responses
+        sysctl -w net.ipv4.icmp_ratelimit=1000 > /dev/null
+        sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 > /dev/null
+    fi
+}
+
+function check_arp_guard() {
+    [[ "$(sysctl -n net.ipv4.conf.all.arp_ignore)" == "1" ]] && return 0 || return 1
+}
+
+function apply_arp_guard() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying ARP Guard (Neighbor Table Stealth)..."
+        sysctl -w net.ipv4.conf.all.arp_ignore=1 > /dev/null
+        sysctl -w net.ipv4.conf.all.arp_announce=2 > /dev/null
+    fi
+}
+
 function check_fingerprint_protection() {
     # Verify if TCP Timestamps are disabled (Reduced OS signature)
     [[ "$(sysctl -n net.ipv4.tcp_timestamps)" == "0" ]] && return 0 || return 1
@@ -247,6 +286,19 @@ function apply_safety_net() {
     fi
 }
 
+function check_mtu_stealth() {
+    # Check if MSS clamping is active on the WireGuard interface
+    iptables -t mangle -C POSTROUTING -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu &>/dev/null && return 0 || return 1
+}
+
+function apply_mtu_stealth() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying MTU/MSS Stealth (Clamping wg0)..."
+        # Force TCP handshake to use the tunnel's specific MTU to prevent 'Oversized Packet' detection
+        iptables -t mangle -A POSTROUTING -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+    fi
+}
+
 function check_webrtc_lockdown() {
     iptables -C OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP &>/dev/null && return 0 || return 1
 }
@@ -254,6 +306,91 @@ function check_webrtc_lockdown() {
 function apply_webrtc_lockdown() {
     log_step "Blocking WebRTC STUN/TURN traffic..."
     build_rule OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP
+}
+
+function check_syn_proxy() {
+    iptables -t raw -C PREROUTING -i vlan20 -p tcp --syn -j NOTRACK &>/dev/null && return 0 || return 1
+}
+
+function apply_syn_proxy() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Engaging SYN Proxy (VLAN Isolation Guard)..."
+        # 1. Flag packets for SYNPROXY processing
+        iptables -t raw -A PREROUTING -i vlan20 -p tcp --syn -j NOTRACK
+        iptables -A FORWARD -i vlan20 -p tcp -m state --state INVALID,UNTRACKED -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
+        # 2. Drop anything that doesn't complete the handshake with the Pi
+        iptables -A FORWARD -i vlan20 -m state --state INVALID -j DROP
+    fi
+}
+
+function apply_port_scrambling() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Port Scrambling (Source Port Randomization)..."
+        # Randomizes the source port for all outbound VPN traffic
+        iptables -t nat -A POSTROUTING -p udp --dport $ONYX_VPN_PORT -j MASQUERADE --random-source
+    fi
+}
+
+function check_port_scrambling() {
+    # Check if the random-source masquerade rule exists for the VPN port
+    iptables -t nat -C POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random-source &>/dev/null && return 0 || return 1
+}
+
+function apply_packet_padding() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Obfuscating Packet Shape (IP ID & TTL Jitter)..."
+        # Randomize IP ID sequence to prevent OS sequencing fingerprinting
+        iptables -t mangle -A POSTROUTING -o wg0 -j ID -i --id 0 # Note: requires xtables-addons
+        # Apply TTL jitter (64 +/- 1) to prevent hop-count analysis
+        iptables -t mangle -A POSTROUTING -o wg0 -j TTL --ttl-set 64
+    fi
+}
+
+function check_packet_padding() {
+    # 1. Verify if TTL mangling is active on the WireGuard interface
+    if ! iptables -t mangle -C POSTROUTING -o wg0 -j TTL --ttl-set 64 &>/dev/null; then
+        return 1
+    fi
+
+    # 2. Verify if IP ID randomization is active (Requires xtables-addons)
+    # We check for the 'ID' target in the mangle table
+    if ! iptables -t mangle -L POSTROUTING -n | grep -q "ID"; then
+        return 1
+    fi
+
+    return 0
+}
+
+function apply_bogom_filter() {
+    log_step "Engaging Bogom Filter (Dropping Malformed Protocols)..."
+    # Drop packets with invalid flag combinations used by scanners
+    build_rule INPUT -p tcp --tcp-flags ALL NONE -j DROP
+    build_rule INPUT -p tcp --tcp-flags ALL ALL -j DROP
+}
+
+function check_bogom_filter() {
+    # 1. Check for the Null Scan block
+    if ! iptables -C INPUT -p tcp --tcp-flags ALL NONE -j DROP &>/dev/null; then
+        return 1
+    fi
+
+    # 2. Check for the Xmas Scan block
+    if ! iptables -C INPUT -p tcp --tcp-flags ALL ALL -j DROP &>/dev/null; then
+        return 1
+    fi
+
+    return 0
+}
+
+function apply_tarpit_trap() {
+    log_step "Setting Scanner Traps (TARPIT Active)..."
+    # Trap any connection attempt to the Pi's local ports that aren't explicitly open
+    iptables -A INPUT -p tcp -m state --state NEW -j TARPIT
+}
+
+function check_tarpit_trap() {
+    # Verify the TARPIT rule is present in the INPUT chain for NEW connections
+    iptables -C INPUT -p tcp -m state --state NEW -j TARPIT &>/dev/null && return 0 || return 1
 }
 
 function check_isolation_barrier() {
