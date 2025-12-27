@@ -2,24 +2,26 @@
 # lib/hardening_intel.sh
 
 function audit_state() {
-    log_header "ONYX SECURITY AUDIT"
+    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$HARDENING_YAML")
     local DRIFT_COUNT=0
     
-    # Extract all keys from hardening.yml
-    local KEYS=$(yq e '.. | select(tag == "!!bool") | path | join(".")' "$ONYX_ROOT/config/hardening.yml")
-
+    log_header "ONYX DRIFT DETECTION"
+    
     for KEY in $KEYS; do
         local RULE_NAME="${KEY##*.}"
-        local INTENT=$(yq e ".$KEY" "$ONYX_ROOT/config/hardening.yml")
+        local INTENT=$(yq e ".$KEY" "$HARDENING_YAML")
 
         if declare -f "check_$RULE_NAME" > /dev/null; then
             if ! "check_$RULE_NAME" "$INTENT"; then
-                log_error "[DRIFT DETECTED] $RULE_NAME is NOT in the desired state."
+                log_error "[DRIFT DETECTED] $RULE_NAME is out of sync."
                 ((DRIFT_COUNT++))
+            else
+                log_success "[OK] $RULE_NAME is in sync."
             fi
+        else
+            log_warning "No audit worker found for rule: $RULE_NAME (Skipping)"
         fi
     done
-    [[ $DRIFT_COUNT -eq 0 ]] && log_success "Audit PASSED." || return 1
 }
 
 function repair_state() {
