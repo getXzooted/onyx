@@ -14,7 +14,7 @@ function system_hardening() {
     
 
     log_header "Enforcing Hardening Desired State..."
-    /usr/local/bin/onyx network repair # &>/dev/null
+    /usr/local/bin/onyx network repair &>/dev/null
 
     # Apply changes immediately
     #sysctl -p "$SYSCTL_FILE" &> /dev/null
