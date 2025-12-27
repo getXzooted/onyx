@@ -50,6 +50,48 @@ function apply_fingerprint_protection() {
     fi
 }
 
+function check_anti_spoofing() {
+    # Verify Strict Reverse Path Filtering is active
+    [[ "$(sysctl -n net.ipv4.conf.all.rp_filter)" == "1" ]] && return 0 || return 1
+}
+
+function apply_anti_spoofing() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Anti-Spoofing (Strict RP Filter)..."
+        # Prevents an attacker from sending packets with a fake source IP
+        sysctl -w net.ipv4.conf.all.rp_filter=1 > /dev/null
+        sysctl -w net.ipv4.conf.default.rp_filter=1 > /dev/null
+    fi
+}
+
+function check_flood_protection() {
+    # Check if TCP SYN Cookies are enabled
+    [[ "$(sysctl -n net.ipv4.tcp_syncookies)" == "1" ]] && return 0 || return 1
+}
+
+function apply_flood_protection() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Flood Protection (TCP SYN Cookies)..."
+        # Protects against SYN flood attacks
+        sysctl -w net.ipv4.tcp_syncookies=1 > /dev/null
+    fi
+}
+
+function check_icmp_stealth() {
+    # Check if ignoring ICMP broadcasts and bogus error responses
+    [[ "$(sysctl -n net.ipv4.icmp_echo_ignore_broadcasts)" == "1" ]] && return 0 || return 1
+}
+
+function apply_icmp_stealth() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying ICMP Stealth (Dropping Broadcast/Bogus)..."
+        # Ignore ICMP echo broadcasts to prevent Smurf attacks
+        sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 > /dev/null
+        # Ignore bogus ICMP error responses
+        sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 > /dev/null
+    fi
+}
+
 function check_disable_ipv6() {
     local INTENT=$1
     local CURRENT=$(sysctl -n net.ipv6.conf.all.disable_ipv6)

@@ -11,6 +11,9 @@ hardening:
   kernel:
     # --- SYSCTL RULES ---
     fingerprint_protection: true # net.ipv4.tcp_timestamps=0 / net.ipv4.tcp_window_scaling=1
+    anti_spoofing: true         # net.ipv4.conf.all.rp_filter=1
+    flood_protection: true      # net.ipv4.tcp_syncookies=1
+    icmp_stealth: true          # net.ipv4.icmp_echo_ignore_broadcasts=1
     ip_forwarding: true        # net.ipv4.ip_forward=1 (Router Function)
     ignore_redirects: true     # net.ipv4.conf.all.accept_redirects=0
     log_martians: true         # net.ipv4.conf.all.log_martians=1
