@@ -35,6 +35,21 @@ function apply_mac_stealth() {
     fi
 }
 
+function check_fingerprint_protection() {
+    # Verify if TCP Timestamps are disabled (Reduced OS signature)
+    [[ "$(sysctl -n net.ipv4.tcp_timestamps)" == "0" ]] && return 0 || return 1
+}
+
+function apply_fingerprint_protection() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Standardizing TCP Stack (Anti-Fingerprinting)..."
+        # 1. Disable RFC1323 timestamps to hide OS-specific uptime/timing
+        sysctl -w net.ipv4.tcp_timestamps=0 > /dev/null
+        # 2. Enable Window Scaling (Standard behavior)
+        sysctl -w net.ipv4.tcp_window_scaling=1 > /dev/null
+    fi
+}
+
 function check_disable_ipv6() {
     local INTENT=$1
     local CURRENT=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
@@ -188,6 +203,15 @@ function apply_safety_net() {
             log_error "Safety Net repair failed: Script could not be built."
         fi
     fi
+}
+
+function check_webrtc_lockdown() {
+    iptables -C OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP &>/dev/null && return 0 || return 1
+}
+
+function apply_webrtc_lockdown() {
+    log_step "Blocking WebRTC STUN/TURN traffic..."
+    build_rule OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP
 }
 
 function check_isolation_barrier() {
