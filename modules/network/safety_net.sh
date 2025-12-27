@@ -42,15 +42,31 @@ iptables -t nat -F
 # Established/Related
 build_rule INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 build_rule OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+build_rule FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# DHCP: Essential for Hotspot Clients
+build_rule INPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+build_rule OUTPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
 
 # Universal Local Access (RFC1918)
+# LAN Access: Full RFC1918 Coverage
 build_rule INPUT -s 10.0.0.0/8 -j ACCEPT
 build_rule OUTPUT -d 10.0.0.0/8 -j ACCEPT
+build_rule INPUT -s 172.16.0.0/12 -j ACCEPT
+build_rule OUTPUT -d 172.16.0.0/12 -j ACCEPT
+build_rule INPUT -s 192.168.0.0/16 -j ACCEPT
+build_rule OUTPUT -d 192.168.0.0/16 -j ACCEPT
+
+# Localhost
 build_rule INPUT -i lo -j ACCEPT
 build_rule OUTPUT -o lo -j ACCEPT
 
 # VPN Transport (The Only Way Out)
 build_rule OUTPUT -d $ONYX_VPN_ENDPOINT -p udp --dport $ONYX_VPN_PORT -j ACCEPT
+
+# Tunnel Traffic (Allow Pi to use the VPN)
+build_rule INPUT -i wg0 -j ACCEPT
+build_rule OUTPUT -o wg0 -j ACCEPT
 
 # NAT & Tunnel Forwarding
 iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
