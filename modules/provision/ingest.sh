@@ -119,8 +119,8 @@ function provision_ingest() {
     fi
 
     # --- PRE-PROVISION REPAIR CHECK ---
-    log_header "RUNNING PRE-PROVISION REPAIR CHECK"
-    $ONYX_ROOT/bin/onyx network repair
+    # log_header "RUNNING PRE-PROVISION REPAIR CHECK"
+    # $ONYX_ROOT/bin/onyx network repair
 
     # If nothing new found, exit
     if [ "$PROVISION_NEEDED" = false ]; then
