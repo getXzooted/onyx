@@ -5,12 +5,15 @@ hardening:
   system:
     # --- ONYX STEALTH: LOG-TO-RAM ---
     forensic_zero: true        # Toggles folder2ram for /var/log
-    mac_stealth: true          # Toggles wlan0 MAC randomization
+    mac_stealth: false          # Toggles wlan0 MAC randomization
+    mac_blend: "apple"         # Options: "apple", "samsung", "intel", "random", "off"
+    dark_mode: true            # Toggles Physical Dark Mode (LED Stealth)
     bluetooth_locked: true     # Toggles BT hardware state
 
   kernel:
     # --- SYSCTL RULES ---
     fingerprint_protection: true # net.ipv4.tcp_timestamps=0 / net.ipv4.tcp_window_scaling=1
+    kernel_lockdown: true       # Disable the Magic SysRq debug keys and Reboot automatically 1 second after a kernel panic
     qname_stealth: true         # <--- DNS Privacy
     icmp_recon_defense: true    # <--- Anti-Scanning
     arp_guard: true             # <--- Internal Stealth
@@ -26,6 +29,7 @@ hardening:
   network:
     # --- FIREWALL POSTURE ---
     safety_net: true           # Enables Onyx Safety Net
+    ghost_host: true           # Disables Host Discovery and Broadcasts
     mtu_stealth: true          # Force TCP handshake to use the tunnel's specific MTU to prevent 'Oversized Packet' detection
     webrtc_lockdown: true      # Blocks WebRTC IP leaks
     syn_proxy: true            # TCP SYN Proxy

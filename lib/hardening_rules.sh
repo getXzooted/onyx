@@ -89,6 +89,20 @@ function apply_fingerprint_protection() {
     fi
 }
 
+function check_kernel_lockdown() {
+    [[ "$(sysctl -n kernel.sysrq)" == "0" ]] && return 0 || return 1
+}
+
+function apply_kernel_lockdown() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Kernel Lockdown (Anti-Forensics)..."
+        # Disable the Magic SysRq debug keys
+        sysctl -w kernel.sysrq=0 > /dev/null
+        # Reboot automatically 1 second after a kernel panic
+        sysctl -w kernel.panic=1 > /dev/null
+    fi
+}
+
 function check_anti_spoofing() {
     # Verify Strict Reverse Path Filtering is active
     [[ "$(sysctl -n net.ipv4.conf.all.rp_filter)" == "1" ]] && return 0 || return 1
@@ -185,22 +199,6 @@ function apply_no_send_redirects() {
 
 # --- SYSTEM RULES ---
 
-function check_bluetooth_locked() {
-    local INTENT=$1
-    if [[ "$INTENT" == "true" ]]; then
-        systemctl is-active bluetooth &>/dev/null && return 1 || return 0
-    fi
-    return 0
-}
-
-function apply_bluetooth_locked() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Locking Bluetooth Hardware..."
-        systemctl disable --now bluetooth &>/dev/null
-        grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt || echo "dtoverlay=disable-bt" >> /boot/firmware/config.txt
-    fi
-}
-
 function check_forensic_zero() {
     # 1. Verify if /var/log is a mountpoint
     if mountpoint -q /var/log; then
@@ -254,6 +252,84 @@ function apply_forensic_zero() {
     fi
 }
 
+function check_dark_mode() {
+    # Check if the dtparam for LEDs is in the config
+    grep -q "dtparam=pwr_led_trigger=none" /boot/firmware/config.txt &>/dev/null && return 0 || return 1
+}
+
+function apply_dark_mode() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Physical Dark Mode (LED Stealth)..."
+        # Disable PWR and ACT LEDs in the firmware config
+        {
+            echo "dtparam=pwr_led_trigger=none"
+            echo "dtparam=pwr_led_activelow=off"
+            echo "dtparam=act_led_trigger=none"
+            echo "dtparam=act_led_activelow=off"
+        } >> /boot/firmware/config.txt
+        log_info "Physical stealth requires a reboot to sync firmware."
+    fi
+}
+
+function check_mac_blend() {
+    local DESIRED=$1
+    local CURRENT=$(cat /sys/class/net/uap0/address 2>/dev/null)
+    
+    # If the rule is off, we are technically 'in sync' with the off state
+    [[ "$DESIRED" == "off" ]] && return 0
+
+    case "$DESIRED" in
+        apple)   OUI="60:fb:42" ;;
+        samsung) OUI="00:07:ab" ;;
+        intel)   OUI="00:16:ea" ;;
+        random)  return 0 ;; # Random always passes audit as it has no fixed OUI
+        *) return 1 ;; # Invalid or drifted
+    esac
+
+    [[ "$CURRENT" =~ ^($OUI) ]] && return 0 || return 1
+}
+
+function apply_mac_blend() {
+    local MODE=$1
+    [[ "$MODE" == "off" ]] && return 0
+
+    case "$MODE" in
+        apple)   OUI="60:fb:42" ;;
+        samsung) OUI="00:07:ab" ;;
+        intel)   OUI="00:16:ea" ;;
+        random)  
+            log_step "Applying Total MAC Randomization..."
+            ip link set uap0 down
+            macchanger -r uap0 &>/dev/null
+            ip link set uap0 up
+            return 0
+            ;;
+    esac
+
+    log_step "Blending Identity: Spoofing $MODE identity..."
+    ip link set uap0 down
+    # Combine the fixed OUI with a randomized suffix
+    ip link set dev uap0 address ${OUI}:$(printf '%02x:%02x:%02x' $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)))
+    ip link set uap0 up
+    log_success "MAC Blend Active: Now appearing as $MODE hardware."
+}
+
+function check_bluetooth_locked() {
+    local INTENT=$1
+    if [[ "$INTENT" == "true" ]]; then
+        systemctl is-active bluetooth &>/dev/null && return 1 || return 0
+    fi
+    return 0
+}
+
+function apply_bluetooth_locked() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Locking Bluetooth Hardware..."
+        systemctl disable --now bluetooth &>/dev/null
+        grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt || echo "dtoverlay=disable-bt" >> /boot/firmware/config.txt
+    fi
+}
+
 # --- NETWORK RULES ---
 
 function check_safety_net() {
@@ -283,6 +359,19 @@ function apply_safety_net() {
         else
             log_error "Safety Net repair failed: Script could not be built."
         fi
+    fi
+}
+
+function check_ghost_host() {
+    # Check if mDNS and LLMNR ports are blocked in the OUTPUT chain
+    iptables -C OUTPUT -p udp -m multiport --dports 5353,5355 -j DROP &>/dev/null && return 0 || return 1
+}
+
+function apply_ghost_host() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Applying Ghost Host (Killing Discovery Broadcasts)..."
+        # Block outbound mDNS (5353) and LLMNR (5355)
+        build_rule OUTPUT -p udp -m multiport --dports 5353,5355 -j DROP
     fi
 }
 
