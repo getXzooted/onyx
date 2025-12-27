@@ -106,7 +106,6 @@ function apply_bluetooth_locked() {
 }
 
 function check_forensic_zero() {
-    function check_forensic_zero() {
     # 1. Verify if /var/log is a mountpoint
     if mountpoint -q /var/log; then
         # 2. STRICT: It MUST be a tmpfs (RAM-disk) to pass audit
@@ -116,7 +115,6 @@ function check_forensic_zero() {
     fi
     # If not a mountpoint or not tmpfs, it is drifted
     return 1
-}
 }
 
 function apply_forensic_zero() {
