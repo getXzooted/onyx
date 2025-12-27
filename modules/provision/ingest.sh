@@ -101,6 +101,12 @@ function provision_ingest() {
 
     local PROVISION_NEEDED=false
 
+    # --- BOOT SYNCHRONIZATION & PROVISIONING ---
+    log_header "ONYX BOOT SYNCHRONIZATION"
+    
+    # Repair any drift before ingesting new configs
+    /usr/local/bin/onyx network repair &>/dev/null
+
     # SCENARIO A: User dropped a full onyx.yml
     if [ -f "$CONFIG_SOURCE" ]; then
         log_header "NEW ONYX CONFIG DETECTED"
