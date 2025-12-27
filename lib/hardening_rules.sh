@@ -134,25 +134,25 @@ function apply_forensic_zero() {
         log_step "Configuring /var/log for RAM-disk..."
         mkdir -p /etc/folder2ram
         # Format: type [space] path [space] options
-        echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
+        echo "/var/log tmpfs size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
 
         # 3. Enable Systemd Service
         folder2ram -enablesystemd &>/dev/null
 
         # 4. Stop loggers so we can mount /var/log
         log_step "Unlocking /var/log from system loggers..."
-        systemctl stop rsyslog &>/dev/null
+        systemctl stop rsyslog unbound dnsmasq hostapd &>/dev/null
         journalctl --relinquish-var &>/dev/null
         
         # 5. Mount the partitions
         if folder2ram -mountall; then
             # 6. Success: Flush and Restore services
             journalctl --flush &>/dev/null
-            systemctl start rsyslog &>/dev/null
+            systemctl start rsyslog unbound dnsmasq hostapd &>/dev/null
             log_success "Forensic-Zero Active: Logs are now in RAM."
         else
             # 7. Fallback: Restore loggers if mount failed
-            systemctl start rsyslog &>/dev/null
+            systemctl start rsyslog unbound dnsmasq hostapd &>/dev/null
             log_error "Forensic-Zero: Mount failed (Target Busy). Reboot required."
         fi
     fi
