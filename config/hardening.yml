@@ -34,8 +34,8 @@ hardening:
     webrtc_lockdown: true      # Blocks WebRTC IP leaks
     syn_proxy: true            # TCP SYN Proxy
     port_scrambling: true      # Randomize port numbers to prevent correlation
-    packet_padding: true       # Obfuscate packet size and timing
-    bogom_filter: false         # Drop malformed packets
+    packet_padding: false       # Obfuscate packet size and timing
+    bogom_filter: true         # Drop malformed packets
     tarpit_trap: false          # Engage TARPIT for connection attempts
     default_deny: true         # Policy DROP for INPUT and FORWARD
     isolation_barrier: true    # VLAN-to-LAN separation (vlan20 -> uap0)
