@@ -251,6 +251,31 @@ EOF
 
 }
 
+function check_use_zram() {
+    # 1. Verify zram0 device exists in the kernel
+    if [[ ! -b /dev/zram0 ]]; then
+        return 1
+    fi
+    
+    # 2. Verify algorithm is lz4 (Tactical standard)
+    local ALGO=$(zramctl --noheadings --output ALGORITHM /dev/zram0 2>/dev/null)
+    if [[ "$ALGO" != "lz4" ]]; then
+        return 1
+    fi
+    
+    # 3. Verify standard RPi swap is disabled to prevent SD wear
+    if systemctl is-active rpi-swap &>/dev/null; then
+        return 1
+    fi
+    
+    # 4. Verify it is actually being used as swap
+    if ! swapon --show | grep -q "/dev/zram0"; then
+        return 1
+    fi
+
+    return 0
+}
+
 function check_forensic_zero() {
     # 1. Verify if /var/log is a mountpoint
     if mountpoint -q /var/log; then
