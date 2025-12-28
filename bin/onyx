@@ -73,64 +73,18 @@ case "$COMMAND" in
         # 1. System Bootstrap (Updates)
         log_info "Phase 1: System Bootstrap & Hardening"
         source "$MODULES_DIR/system/bootstrap.sh"
-        source "$MODULES_DIR/system/hardening.sh"
+        source "$MODULES_DIR/system/hardening.sh" 
 
-        # === MEMORY OPTIMIZATION FOR PI ZERO ===
-        log_header "PHASE 1: MEMORY OPTIMIZATION" 
-
-        # 2. Install ZRAM
-        log_step "Installing ZRAM..."
-        apt-get update && apt-get install -y zram-tools bc
-
-        # 3. SURGICAL STRIKE: Kill the built-in Trixie swap
-        # This releases the 'Device or resource busy' error.
-        log_info "Killing competing swap services..."
-        systemctl stop rpi-swap zramswap 2>/dev/null
-        systemctl mask rpi-swap 2>/dev/null # Permanent prevent
-        sudo swapoff -a 2>/dev/null
-        modprobe -r zram 2>/dev/null
-        modprobe zram num_devices=1
-
-        # DYNAMIC CALCULATION: Scale to 50% of RAM
-        TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
-        ZRAM_SIZE=$(echo "$TOTAL_RAM * 0.5" | bc | cut -d. -f1)
-
-        HARDWARE LOCK: Apply algorithm and dynamic size
-        if [ -b /dev/zram0 ]; then
-            log_step "Locking hardware: ${ZRAM_SIZE}M @ lz4..."
-            # We use the successful --find flag with the new dynamic size
-            sudo zramctl --find --size "${ZRAM_SIZE}M" --algorithm lz4
-                
-            # ACTIVATE: Manual setup to bypass service configuration
-            sudo mkswap /dev/zram0
-            sudo swapon /dev/zram0 -p 100
-        fi
-
-        # 5. Apply the Scalable Memory Configuration
-        cat <<EOF | sudo tee /etc/default/zramswap
-# Onyx Memory Guard - Scalable Config
-# Automatically scales to 50% of available physical RAM
-PERCENTAGE=50
-# Force the high-performance algorithm for ARM processors
-ALGO=lz4
-# Ensure this swap is used first before any SD card overflow
-PRIORITY=100
-EOF
-
-        # 6. Restart the service - this should now succeed without the "Busy" error
-        # systemctl restart zramswap
-        log_success "ZRAM Active (lz4 Compression, 50% RAM)"
-
-        # 7. Schedule Reboot & Resume
+        # 2. Schedule Reboot & Resume
         # This creates the service and reboots the machine.
         system_setup_resume "provision"
 
-        # 8. Auto-Provisioning Service (The USB Watcher)
+        # 3. Auto-Provisioning Service (The USB Watcher)
         log_info "Phase 2d: Auto-Provisioning Service"
         source "$MODULES_DIR/provision/install_service.sh"
         source "$MODULES_DIR/provision/ingest.sh"
 
-        # 9. We also reboot in case no drag-and-drop happens.
+        # 4. We also reboot in case no drag-and-drop happens.
         log_info "System will reboot now to continue installation..."
         sleep 3
         reboot
