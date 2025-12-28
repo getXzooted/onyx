@@ -415,8 +415,7 @@ function apply_syn_proxy() {
 function apply_port_scrambling() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying Port Scrambling (Source Port Randomization)..."
-        # nf_tables uses --random for source port entropy
-        iptables -t nat -A POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random
+        iptables -t nat -A POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random-fully
     fi
 }
 
