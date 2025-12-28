@@ -67,116 +67,47 @@ COMMAND="$1"
 case "$COMMAND" in
 
     install)
-        # Import the Resume Logic
-        source "$MODULES_DIR/system/resume.sh"
-
-        # CHECK: Are we resuming from a reboot?
-        if system_check_resume_state; then
-            # ==========================================
-            # PHASE 2: APPLICATION LAYER (Post-Reboot)
-            # ==========================================
-            log_header "RESUMING INSTALLATION (PHASE 2)"
-
-            # Ask the OS if the clock is synced.
-            log_warning "Waiting for system time synchronization..."
             
-            # Loop until the OS explicitly reports 'yes'
-            until [ "$(timedatectl show -p NTPSynchronized --value)" == "yes" ]; do
-                echo -n "."
-                sleep 1
-            done
+        log_header "STARTING INSTALLATION (PHASE 1)"
             
-            echo ""
-            log_success "Time synchronized. Proceeding."
-            
-            log_info "Waiting for active internet connection..."
-            until ping -c 1 -W 2 google.com > /dev/null 2>&1; do
-                echo -n "."
-                sleep 2
-            done
-            echo ""
-            log_success "Connection Confirmed. Proceeding..."
+        # 1. System Bootstrap (Updates)
+        log_info "Phase 1: System Bootstrap & Hardening"
+        source "$MODULES_DIR/system/bootstrap.sh"
+        source "$MODULES_DIR/system/hardening.sh"
 
-            # 1. DNS Services (Unbound)
-            log_info "Phase 2a: DNS Services"
-            source "$MODULES_DIR/dns/configure_unbound.sh"
-            source "$MODULES_DIR/dns/set_routing.sh"
-            # (Assuming these scripts auto-run their main functions or you add them here)
+        # === MEMORY OPTIMIZATION FOR PI ZERO ===
+        log_header "PHASE 1: MEMORY OPTIMIZATION" 
 
-            # --- PHASE 2 DNS LOCKDOWN ---
-            log_info "Redirecting Gateway DNS to Local Unbound..."
+        # 2. Install ZRAM
+        log_step "Installing ZRAM..."
+        apt-get update && apt-get install -y zram-tools bc
 
-            # Force local loopback
-            echo "nameserver 127.0.0.1" > /etc/resolv.conf
+        # 3. SURGICAL STRIKE: Kill the built-in Trixie swap
+        # This releases the 'Device or resource busy' error.
+        log_info "Killing competing swap services..."
+        systemctl stop rpi-swap zramswap 2>/dev/null
+        systemctl mask rpi-swap 2>/dev/null # Permanent prevent
+        sudo swapoff -a 2>/dev/null
+        modprobe -r zram 2>/dev/null
+        modprobe zram num_devices=1
 
-            # THE POLISH: Make the file immutable (NetworkManager can't touch it)
-            chattr +i /etc/resolv.conf
-            log_success "Gateway DNS Locked to 127.0.0.1"
+        # DYNAMIC CALCULATION: Scale to 50% of RAM
+        TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+        ZRAM_SIZE=$(echo "$TOTAL_RAM * 0.5" | bc | cut -d. -f1)
 
-            # 2. RaspAP Hotspot (The Web Interface)
-            log_info "Phase 2b: RaspAP Hotspot"
-            source "$MODULES_DIR/system/raspap.sh"
-            
-            # 3. Dashboard (The CLI Monitor)
-            log_info "Phase 2c: CLI Dashboard"
-            source "$MODULES_DIR/system/dashboard.sh"
-            system_install_dashboard
-
-            # 5. Secure Uplink (Final Lock)
-            log_info "Phase 2e: Securing Uplink"
-            source "$MODULES_DIR/system/tuning.sh"
-            system_secure_uplink
-            
-            # 6. Cleanup (Delete the resume service)
-            system_cleanup_resume
-            
-            log_success "ONYX INSTALLATION COMPLETE."
-            log_info "Run 'sudo onyx monitor' to view dashboard."
-            
-        else
-            # ==========================================
-            # PHASE 1: SYSTEM LAYER (Pre-Reboot)
-            # ==========================================
-            log_header "STARTING INSTALLATION (PHASE 1)"
-            
-            # 1. System Bootstrap (Updates)
-            log_info "Phase 1: System Bootstrap & Hardening"
-            source "$MODULES_DIR/system/bootstrap.sh"
-            source "$MODULES_DIR/system/hardening.sh"
-
-            # === MEMORY OPTIMIZATION FOR PI ZERO ===
-            log_header "PHASE 1: MEMORY OPTIMIZATION" 
-
-            # 2. Install ZRAM
-            log_step "Installing ZRAM..."
-            apt-get update && apt-get install -y zram-tools bc
-
-            # 3. SURGICAL STRIKE: Kill the built-in Trixie swap
-            # This releases the 'Device or resource busy' error.
-            log_info "Killing competing swap services..."
-            systemctl stop rpi-swap zramswap 2>/dev/null
-            systemctl mask rpi-swap 2>/dev/null # Permanent prevent
-            sudo swapoff -a 2>/dev/null
-            modprobe -r zram 2>/dev/null
-            modprobe zram num_devices=1
-
-            # DYNAMIC CALCULATION: Scale to 50% of RAM
-            TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
-            ZRAM_SIZE=$(echo "$TOTAL_RAM * 0.5" | bc | cut -d. -f1)
-
-            HARDWARE LOCK: Apply algorithm and dynamic size
-            if [ -b /dev/zram0 ]; then
-                log_step "Locking hardware: ${ZRAM_SIZE}M @ lz4..."
-                # We use the successful --find flag with the new dynamic size
-                sudo zramctl --find --size "${ZRAM_SIZE}M" --algorithm lz4
+        HARDWARE LOCK: Apply algorithm and dynamic size
+        if [ -b /dev/zram0 ]; then
+            log_step "Locking hardware: ${ZRAM_SIZE}M @ lz4..."
+            # We use the successful --find flag with the new dynamic size
+            sudo zramctl --find --size "${ZRAM_SIZE}M" --algorithm lz4
                 
-                # ACTIVATE: Manual setup to bypass service configuration
-                sudo mkswap /dev/zram0
-                sudo swapon /dev/zram0 -p 100
-            fi
+            # ACTIVATE: Manual setup to bypass service configuration
+            sudo mkswap /dev/zram0
+            sudo swapon /dev/zram0 -p 100
+        fi
 
-            # 5. Apply the Scalable Memory Configuration
-            cat <<EOF | sudo tee /etc/default/zramswap
+        # 5. Apply the Scalable Memory Configuration
+        cat <<EOF | sudo tee /etc/default/zramswap
 # Onyx Memory Guard - Scalable Config
 # Automatically scales to 50% of available physical RAM
 PERCENTAGE=50
@@ -186,62 +117,86 @@ ALGO=lz4
 PRIORITY=100
 EOF
 
-            # 6. Restart the service - this should now succeed without the "Busy" error
-            # systemctl restart zramswap
-            log_success "ZRAM Active (lz4 Compression, 50% RAM)"
+        # 6. Restart the service - this should now succeed without the "Busy" error
+        # systemctl restart zramswap
+        log_success "ZRAM Active (lz4 Compression, 50% RAM)"
 
-            # 7. Schedule Reboot & Resume
-            # This creates the service and reboots the machine.
-            system_setup_resume
+        # 7. Schedule Reboot & Resume
+        # This creates the service and reboots the machine.
+        system_setup_resume "provision"
 
-            # 8. Auto-Provisioning Service (The USB Watcher)
-            log_info "Phase 2d: Auto-Provisioning Service"
-            source "$MODULES_DIR/provision/install_service.sh"
-            source "$MODULES_DIR/provision/ingest.sh"
-
-            # 9. We also reboot in case no drag-and-drop happens.
-            log_info "System will reboot now to continue installation..."
-            sleep 3
-            reboot
-        fi
-        ;;
-
-    installOld)
-        log_header "STARTING ONYX INSTALLATION"
-        
-        # 1. System Setup
-        log_info "Phase 1: System Bootstrap & Hardening"
-        source "$MODULES_DIR/system/bootstrap.sh"
-        source "$MODULES_DIR/system/hardening.sh"
-
-        # 2. DNS Setup (Unbound)
-        log_info "Phase 2: DNS Services"
-        source "$MODULES_DIR/dns/configure_unbound.sh"
-        source "$MODULES_DIR/dns/set_routing.sh"
-
-        # 3. RaspAP (Hotspot)
-        log_info "Phase 2: RaspAP Hotspot"
-        source "$MODULES_DIR/system/raspap.sh"
-
-        # 4. Auto-Provisioning Setup
-        log_info "Phase 3: Auto-Provisioning Service"
+        # 8. Auto-Provisioning Service (The USB Watcher)
+        log_info "Phase 2d: Auto-Provisioning Service"
         source "$MODULES_DIR/provision/install_service.sh"
+        source "$MODULES_DIR/provision/ingest.sh"
 
-        # 5. Secure Uplink (The Final Seal)
-        # We run this LAST to lock the active internet connection
-        log_info "Phase 5: Securing Uplink"
-        source "$MODULES_DIR/system/tuning.sh"
-        system_secure_uplink
-        
-        # x. (Future) VPN Setup
-        # source "$MODULES_DIR/vpn/install.sh"
-        
-        log_success "Installation Complete! Use 'onyx provision' to configure keys."
+        # 9. We also reboot in case no drag-and-drop happens.
+        log_info "System will reboot now to continue installation..."
+        sleep 3
+        reboot
         ;;
         
     provision)
         log_header "PROVISIONING SYSTEM"
+            
+        log_warning "Waiting for system time synchronization..."
+            
+        # Loop until the OS explicitly reports 'yes'
+        until [ "$(timedatectl show -p NTPSynchronized --value)" == "yes" ]; do
+            echo -n "."
+            sleep 1
+        done
+            
+        echo ""
+        log_success "Time synchronized. Proceeding."
+            
+        log_info "Waiting for active internet connection..."
+        until ping -c 1 -W 2 google.com > /dev/null 2>&1; do
+            echo -n "."
+            sleep 2
+        done
+        echo ""
+        log_success "Connection Confirmed. Proceeding..."
 
+        # 1. DNS Services (Unbound)
+        log_info "Phase 2a: DNS Services"
+        source "$MODULES_DIR/dns/configure_unbound.sh"
+        source "$MODULES_DIR/dns/set_routing.sh"
+        # (Assuming these scripts auto-run their main functions or you add them here)
+
+        # --- PHASE 2 DNS LOCKDOWN ---
+        log_info "Redirecting Gateway DNS to Local Unbound..."
+
+        # Force local loopback
+        echo "nameserver 127.0.0.1" > /etc/resolv.conf
+
+        # THE POLISH: Make the file immutable (NetworkManager can't touch it)
+        chattr +i /etc/resolv.conf
+        log_success "Gateway DNS Locked to 127.0.0.1"
+
+        # 2. RaspAP Hotspot (The Web Interface)
+        log_info "Phase 2b: RaspAP Hotspot"
+        source "$MODULES_DIR/system/raspap.sh"
+            
+        # 3. Dashboard (The CLI Monitor)
+        log_info "Phase 2c: CLI Dashboard"
+        source "$MODULES_DIR/system/dashboard.sh"
+        system_install_dashboard
+
+        # 5. Secure Uplink (Final Lock)
+        log_info "Phase 2e: Securing Uplink"
+        source "$MODULES_DIR/system/tuning.sh"
+        system_secure_uplink
+            
+        # 6. Cleanup (Delete the resume service)
+        system_cleanup_resume
+            
+        log_success "ONYX INSTALLATION COMPLETE."
+        log_info "Run 'sudo onyx monitor' to view dashboard."
+        ;;
+
+    config)
+        log_header "APPLYING CONFIGURATION"
         # Check if a config file path is provided as an argument
         if [ -n "$2" ]; then
              source "$MODULES_DIR/provision/ingest.sh"
@@ -277,12 +232,6 @@ EOF
         else
              log_error "Provisioning failed. Firewall service not enabled."
         fi
-        ;;
-
-    config)
-        log_header "APPLYING CONFIGURATION"
-        # TODO: Ansible run tags=config
-        log_warning "Config module not yet implemented."
         ;;
 
     status)
