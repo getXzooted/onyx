@@ -306,11 +306,19 @@ function apply_mac_blend() {
             ;;
     esac
 
-    log_step "Blending Identity: Spoofing $MODE identity..."
+    log_step "Applying MAC Blend: Adopting $MODE identity..."
+    # 1. Stop the Wireless Stack to prevent BSSID mismatch
+    systemctl stop hostapd dnsmasq &>/dev/null
+
+    # 2. Rotate the MAC
     ip link set uap0 down
     # Combine the fixed OUI with a randomized suffix
     ip link set dev uap0 address ${OUI}:$(printf '%02x:%02x:%02x' $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)))
     ip link set uap0 up
+
+    # 3. Restart services to broadcast the new identity
+    systemctl start dnsmasq hostapd &>/dev/null
+    
     log_success "MAC Blend Active: Now appearing as $MODE hardware."
 }
 
