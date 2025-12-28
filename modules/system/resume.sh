@@ -14,44 +14,6 @@ function system_check_resume_state() {
     fi
 }
 
-function system_setup_resume() {
-    log_header "SCHEDULING REBOOT RESUME"
-    
-    # 1. Create the Marker
-    # This acts as the memory for the next boot
-    touch "$RESUME_MARKER"
-    
-    # 2. Create the Systemd Service
-    # We use the global symlink '/usr/local/bin/onyx' because your install.sh
-    # guarantees it exists before we reach this point.
-    log_step "Creating one-time systemd service..."
-    
-    cat <<EOF > "$RESUME_SERVICE"
-[Unit]
-Description=Onyx Installer Resume Service
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c '/usr/local/bin/onyx install > /var/log/onyx_resume.log 2>&1'
-StandardOutput=journal+console
-User=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    # 3. Enable it
-    systemctl enable onyx-resume.service
-    log_success "Resume service armed."
-    
-    # log_warning "SYSTEM WILL REBOOT IN 5 SECONDS..."
-    # sleep 5
-    # reboot
-    # We let the ingest/provision function handle the reboot now to create drag and drop flow.
-}
-
 function system_cleanup_resume() {
     log_step "Cleaning up resume artifacts..."
     
@@ -65,4 +27,32 @@ function system_cleanup_resume() {
     rm -f "$RESUME_MARKER"
     
     log_success "Resume sequence completed."
+}
+
+function system_setup_resume() {
+    log_header 
+    local TARGET_CMD="${1:-provision}" # Default to provision if none provided
+    local SERVICE_FILE="/etc/systemd/system/onyx-resume.service"
+
+    
+    log_step "Creating systemd service"
+    cat <<EOF > "$SERVICE_FILE"
+[Unit]
+Description=Onyx Resume Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/onyx $TARGET_CMD
+StandardOutput=journal+console
+StandardError=inherit
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable onyx-resume.service
 }
