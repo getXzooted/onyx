@@ -137,7 +137,7 @@ function provision_ingest() {
     chmod 600 "$TARGET_CONFIG"
     log_step "Running Provisioning Sequence..."
     
-    $ONYX_ROOT/bin/onyx provision
+    $ONYX_ROOT/bin/onyx config
     
     if [ $? -eq 0 ]; then
         log_success "Provisioning successful."
