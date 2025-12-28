@@ -67,11 +67,10 @@ COMMAND="$1"
 case "$COMMAND" in
 
     install)
-        # 1. Check if the diagnostic tool exists
+        # Check if the installation script exists
         STATUS_SCRIPT="$ONYX_ROOT/lib/install/install.sh"
         
         if [ -f "$STATUS_SCRIPT" ]; then
-            # 2. Handoff control to the installation engine
             source "$STATUS_SCRIPT"
         else
             log_error "Install module not found at $STATUS_SCRIPT"
