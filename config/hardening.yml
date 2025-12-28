@@ -4,6 +4,7 @@
 hardening:
   system:
     # --- ONYX STEALTH: LOG-TO-RAM ---
+    use_zram: true             # Toggles zram to active swap in RAM
     forensic_zero: true        # Toggles folder2ram for /var/log
     mac_stealth: false          # Toggles wlan0 MAC randomization
     mac_blend: "apple"         # Options: "apple", "samsung", "intel", "random", "off"
