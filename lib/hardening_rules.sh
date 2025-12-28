@@ -412,40 +412,39 @@ function apply_syn_proxy() {
     fi
 }
 
+function check_port_scrambling() {
+    # Check for the random-fully flag in the NAT table
+    iptables -t nat -L POSTROUTING -n | grep -q "MASQUERADE.*fully-random" && return 0 || return 1
+}
+
 function apply_port_scrambling() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying Port Scrambling (Source Port Randomization)..."
-        iptables -t nat -A POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random-fully
+        # 1. Try the standard nf_tables flag
+        if ! iptables -t nat -A POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random-fully 2>/dev/null; then
+            # 2. Tactical Fallback: Use native nftables command if iptables-nft shim fails
+            log_info "iptables shim failed; using native nft fallback..."
+            nft add rule ip nat POSTROUTING udp dport "$ONYX_VPN_PORT" masquerade fully-random 2>/dev/null
+        fi
     fi
 }
 
-function check_port_scrambling() {
-    # Check if the random-source masquerade rule exists for the VPN port
-    iptables -t nat -C POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random-source &>/dev/null && return 0 || return 1
+function check_packet_padding() {
+    # Verify TTL is set and the ID module is available
+    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to 64" && return 0 || return 1
 }
 
 function apply_packet_padding() {
     if [[ "$1" == "true" ]]; then
         log_step "Obfuscating Packet Shape (IP ID & TTL Jitter)..."
-        # Requires xtables-addons
-        iptables -t mangle -A POSTROUTING -o wg0 -j ID --id 0
         iptables -t mangle -A POSTROUTING -o wg0 -j TTL --ttl-set 64
+        # SAFE MODE: Only apply ID randomization if the module built successfully
+        if [ -f "/lib/modules/$(uname -r)/extra/xt_ID.ko" ] || modinfo xt_ID &>/dev/null; then
+            iptables -t mangle -A POSTROUTING -o wg0 -j ID --id 0
+        else
+            log_warning "Packet ID randomization skipped: xt_ID module not found (6.12 Build Failure)."
+        fi
     fi
-}
-
-function check_packet_padding() {
-    # 1. Verify if TTL mangling is active on the WireGuard interface
-    if ! iptables -t mangle -C POSTROUTING -o wg0 -j TTL --ttl-set 64 &>/dev/null; then
-        return 1
-    fi
-
-    # 2. Verify if IP ID randomization is active (Requires xtables-addons)
-    # We check for the 'ID' target in the mangle table
-    if ! iptables -t mangle -L POSTROUTING -n | grep -q "ID"; then
-        return 1
-    fi
-
-    return 0
 }
 
 function apply_bogom_filter() {
@@ -469,15 +468,20 @@ function check_bogom_filter() {
     return 0
 }
 
-function apply_tarpit_trap() {
-    log_step "Setting Scanner Traps (TARPIT Active)..."
-    # Trap any connection attempt to the Pi's local ports that aren't explicitly open
-    iptables -A INPUT -p tcp -m state --state NEW -j TARPIT
+function check_tarpit_trap() {
+    iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
 }
 
-function check_tarpit_trap() {
-    # Verify the TARPIT rule is present in the INPUT chain for NEW connections
-    iptables -C INPUT -p tcp -m state --state NEW -j TARPIT &>/dev/null && return 0 || return 1
+function apply_tarpit_trap() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Setting Scanner Traps (TARPIT Active)..."
+        # SAFE MODE: Only apply TARPIT if the module is available
+        if modinfo xt_TARPIT &>/dev/null; then
+            iptables -A INPUT -p tcp -m state --state NEW -j TARPIT
+        else
+            log_warning "TARPIT Trap skipped: Kernel module missing (6.12 Build Failure)."
+        fi
+    fi
 }
 
 function check_isolation_barrier() {
