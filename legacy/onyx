@@ -1,0 +1,549 @@
+#!/bin/bash
+
+# ==============================================================================
+#                             ONYX CLI CONTROLLER
+#                 The central command hub for the Onyx Gateway.
+# ==============================================================================
+
+# 1. ESTABLISH ROOT CONTEXT
+# We use readlink to find the actual project folder, even if this script is a symlink.
+# 1. ESTABLISH ROOT CONTEXT
+CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
+ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+
+# --- FIX: FALLBACK FOR SYSTEMD ---
+# If dynamic detection failed (root is empty or root), force the standard path
+if [[ -z "$ONYX_ROOT" ]] || [[ "$ONYX_ROOT" == "/" ]]; then
+    ONYX_ROOT="/opt/onyx"
+fi
+# ---------------------------------
+
+CORE_DIR="$ONYX_ROOT/core"
+MODULES_DIR="$ONYX_ROOT/modules"
+
+source "$ONYX_ROOT/env.sh"
+
+# 2. LOAD DEPENDENCIES
+# Logger is required for all scripts
+if [ -f "$CORE_DIR/logger.sh" ]; then
+    source "$CORE_DIR/logger.sh"
+else
+    echo "CRITICAL ERROR: Logger not found at $CORE_DIR/logger.sh"
+    exit 1
+fi
+
+# Load Config Parser to read onyx.yml
+if [ -f "$CORE_DIR/config_parser.sh" ]; then
+    source "$CORE_DIR/config_parser.sh"
+    # Run the load function immediately
+    load_config
+else
+    log_warning "Config parser not found. Running with defaults."
+fi
+
+# 3. ROOT CHECK
+if [[ $EUID -ne 0 ]]; then
+   log_error "Onyx must be run as root. Try: sudo onyx $1"
+   exit 1
+fi
+
+# 4. USAGE MENU
+function show_usage() {
+    echo -e "\n${BOLD}Onyx Gateway${NC} - Privacy Focused Router"
+    echo -e "Usage: sudo onyx [COMMAND]"
+    echo ""
+    echo -e "${BOLD}Commands:${NC}"
+    echo -e "  ${GREEN}install${NC}    bootstrap  -> Installs all dependencies and software."
+    echo -e "  ${GREEN}provision${NC}  configure  -> Ingests keys and locks down the system."
+    echo -e "  ${GREEN}config${NC}     update     -> Re-applies settings from onyx.yml."
+    echo -e "  ${GREEN}status${NC}     check      -> Shows VPN connection and security status."
+    echo -e "  ${GREEN}hardener${NC}  [cmd]      -> Managed Desired State Security (audit, repair, panic)."
+    echo ""
+}
+
+# 5. COMMAND ROUTER
+COMMAND="$1"
+
+case "$COMMAND" in
+
+    install)
+        # Import the Resume Logic
+        source "$MODULES_DIR/system/resume.sh"
+
+        # CHECK: Are we resuming from a reboot?
+        if system_check_resume_state; then
+            # ==========================================
+            # PHASE 2: APPLICATION LAYER (Post-Reboot)
+            # ==========================================
+            log_header "RESUMING INSTALLATION (PHASE 2)"
+
+            # Ask the OS if the clock is synced.
+            log_warning "Waiting for system time synchronization..."
+            
+            # Loop until the OS explicitly reports 'yes'
+            until [ "$(timedatectl show -p NTPSynchronized --value)" == "yes" ]; do
+                echo -n "."
+                sleep 1
+            done
+            
+            echo ""
+            log_success "Time synchronized. Proceeding."
+            
+            log_info "Waiting for active internet connection..."
+            until ping -c 1 -W 2 google.com > /dev/null 2>&1; do
+                echo -n "."
+                sleep 2
+            done
+            echo ""
+            log_success "Connection Confirmed. Proceeding..."
+
+            # 1. DNS Services (Unbound)
+            log_info "Phase 2a: DNS Services"
+            source "$MODULES_DIR/dns/configure_unbound.sh"
+            source "$MODULES_DIR/dns/set_routing.sh"
+            # (Assuming these scripts auto-run their main functions or you add them here)
+
+            # --- PHASE 2 DNS LOCKDOWN ---
+            log_info "Redirecting Gateway DNS to Local Unbound..."
+
+            # Force local loopback
+            echo "nameserver 127.0.0.1" > /etc/resolv.conf
+
+            # THE POLISH: Make the file immutable (NetworkManager can't touch it)
+            chattr +i /etc/resolv.conf
+            log_success "Gateway DNS Locked to 127.0.0.1"
+
+            # 2. RaspAP Hotspot (The Web Interface)
+            log_info "Phase 2b: RaspAP Hotspot"
+            source "$MODULES_DIR/system/raspap.sh"
+            
+            # 3. Dashboard (The CLI Monitor)
+            log_info "Phase 2c: CLI Dashboard"
+            source "$MODULES_DIR/system/dashboard.sh"
+            system_install_dashboard
+
+            # 5. Secure Uplink (Final Lock)
+            log_info "Phase 2e: Securing Uplink"
+            source "$MODULES_DIR/system/tuning.sh"
+            system_secure_uplink
+            
+            # 6. Cleanup (Delete the resume service)
+            system_cleanup_resume
+            
+            log_success "ONYX INSTALLATION COMPLETE."
+            log_info "Run 'sudo onyx monitor' to view dashboard."
+            
+        else
+            # ==========================================
+            # PHASE 1: SYSTEM LAYER (Pre-Reboot)
+            # ==========================================
+            log_header "STARTING INSTALLATION (PHASE 1)"
+            
+            # 1. System Bootstrap (Updates)
+            log_info "Phase 1: System Bootstrap & Hardening"
+            source "$MODULES_DIR/system/bootstrap.sh"
+            source "$MODULES_DIR/system/hardening.sh"
+
+            # === MEMORY OPTIMIZATION FOR PI ZERO ===
+            log_header "PHASE 1: MEMORY OPTIMIZATION" 
+
+            # 2. Install ZRAM
+            log_step "Installing ZRAM..."
+            apt-get update && apt-get install -y zram-tools bc
+
+            # 3. SURGICAL STRIKE: Kill the built-in Trixie swap
+            # This releases the 'Device or resource busy' error.
+            log_info "Killing competing swap services..."
+            systemctl stop rpi-swap zramswap 2>/dev/null
+            systemctl mask rpi-swap 2>/dev/null # Permanent prevent
+            sudo swapoff -a 2>/dev/null
+            modprobe -r zram 2>/dev/null
+            modprobe zram num_devices=1
+
+            # DYNAMIC CALCULATION: Scale to 50% of RAM
+            TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+            ZRAM_SIZE=$(echo "$TOTAL_RAM * 0.5" | bc | cut -d. -f1)
+
+            HARDWARE LOCK: Apply algorithm and dynamic size
+            if [ -b /dev/zram0 ]; then
+                log_step "Locking hardware: ${ZRAM_SIZE}M @ lz4..."
+                # We use the successful --find flag with the new dynamic size
+                sudo zramctl --find --size "${ZRAM_SIZE}M" --algorithm lz4
+                
+                # ACTIVATE: Manual setup to bypass service configuration
+                sudo mkswap /dev/zram0
+                sudo swapon /dev/zram0 -p 100
+            fi
+
+            # 5. Apply the Scalable Memory Configuration
+            cat <<EOF | sudo tee /etc/default/zramswap
+# Onyx Memory Guard - Scalable Config
+# Automatically scales to 50% of available physical RAM
+PERCENTAGE=50
+# Force the high-performance algorithm for ARM processors
+ALGO=lz4
+# Ensure this swap is used first before any SD card overflow
+PRIORITY=100
+EOF
+
+            # 6. Restart the service - this should now succeed without the "Busy" error
+            # systemctl restart zramswap
+            log_success "ZRAM Active (lz4 Compression, 50% RAM)"
+
+            # 7. Schedule Reboot & Resume
+            # This creates the service and reboots the machine.
+            system_setup_resume
+
+            # 8. Auto-Provisioning Service (The USB Watcher)
+            log_info "Phase 2d: Auto-Provisioning Service"
+            source "$MODULES_DIR/provision/install_service.sh"
+            source "$MODULES_DIR/provision/ingest.sh"
+
+            # 9. We also reboot in case no drag-and-drop happens.
+            log_info "System will reboot now to continue installation..."
+            sleep 3
+            reboot
+        fi
+        ;;
+
+    installOld)
+        log_header "STARTING ONYX INSTALLATION"
+        
+        # 1. System Setup
+        log_info "Phase 1: System Bootstrap & Hardening"
+        source "$MODULES_DIR/system/bootstrap.sh"
+        source "$MODULES_DIR/system/hardening.sh"
+
+        # 2. DNS Setup (Unbound)
+        log_info "Phase 2: DNS Services"
+        source "$MODULES_DIR/dns/configure_unbound.sh"
+        source "$MODULES_DIR/dns/set_routing.sh"
+
+        # 3. RaspAP (Hotspot)
+        log_info "Phase 2: RaspAP Hotspot"
+        source "$MODULES_DIR/system/raspap.sh"
+
+        # 4. Auto-Provisioning Setup
+        log_info "Phase 3: Auto-Provisioning Service"
+        source "$MODULES_DIR/provision/install_service.sh"
+
+        # 5. Secure Uplink (The Final Seal)
+        # We run this LAST to lock the active internet connection
+        log_info "Phase 5: Securing Uplink"
+        source "$MODULES_DIR/system/tuning.sh"
+        system_secure_uplink
+        
+        # x. (Future) VPN Setup
+        # source "$MODULES_DIR/vpn/install.sh"
+        
+        log_success "Installation Complete! Use 'onyx provision' to configure keys."
+        ;;
+        
+    provision)
+        log_header "PROVISIONING SYSTEM"
+
+        # Check if a config file path is provided as an argument
+        if [ -n "$2" ]; then
+             source "$MODULES_DIR/provision/ingest.sh"
+             # Pass the file path to the ingest function
+             provision_ingest "$2"
+             exit $?
+        fi
+        
+        # 1. LOAD CONFIG
+        # We need the variables (ONYX_VPN_ENDPOINT, etc.) to be loaded first!
+        if [ -f "$CORE_DIR/config_parser.sh" ]; then
+             load_config
+        fi
+
+        # 2. RUN MODULES
+        log_info "Phase 1: Configure VPN"
+        source "$MODULES_DIR/vpn/wireguard/configure.sh"
+
+        log_info "Phase 2: Configure Firewall (Safety Net)"
+        source "$MODULES_DIR/network/safety_net.sh"
+
+        # 3. SECURE UPLINK (The "Hotel" Fix)
+        # This detects the NEW hotel connection and forces it to use safe DNS.
+        log_info "Phase 3: Secure Uplink (DNS Lock)"
+        source "$MODULES_DIR/system/tuning.sh"
+        system_secure_uplink
+        
+        # 4. VERIFY
+        # Simple check to see if services are active
+        if systemctl is-enabled safety-net &> /dev/null; then
+             log_success "System is PROVISIONED and LOCKED DOWN."
+             log_info "Reboot recommended to apply all changes."
+        else
+             log_error "Provisioning failed. Firewall service not enabled."
+        fi
+        ;;
+
+    config)
+        log_header "APPLYING CONFIGURATION"
+        # TODO: Ansible run tags=config
+        log_warning "Config module not yet implemented."
+        ;;
+
+    status)
+        # 1. Check if the diagnostic tool exists
+        STATUS_SCRIPT="$ONYX_ROOT/core/onyx_status.sh"
+        
+        if [ -f "$STATUS_SCRIPT" ]; then
+            # 2. Handoff control to the diagnostic engine
+            # We execute it directly (instead of source) to keep its variables isolated
+            sudo "$STATUS_SCRIPT"
+        else
+            log_error "Status module not found at $STATUS_SCRIPT"
+            log_info "Please ensure core/onyx_status.sh exists and is executable."
+        fi
+        ;;
+
+    update)
+        log_header "RUNNING UPDATE MANAGER"
+        source "$ONYX_ROOT/core/update.sh"
+        core_update "$2"
+        ;;
+
+    gui)
+        # Activates the Web Interface on demand
+        source "$MODULES_DIR/system/gui.sh"
+        system_activate_gui
+        
+        # Web Interface Configuration
+        source "$MODULES_DIR/system/gui_ssl.sh"
+        system_configure_gui
+        ;;
+
+    # === INSTALL DASHBOARD ===
+    dashboard)
+        source "$MODULES_DIR/system/dashboard.sh"
+        system_install_dashboard
+        ;;
+
+    # === RUN MONITOR ===
+    monitor)
+        # Verify it is installed before trying to run it
+        if [ -f "/usr/local/bin/onyx-dash" ]; then
+            /usr/local/bin/onyx-dash
+        else
+            log_error "Dashboard not found. Run 'sudo onyx dashboard' first."
+        fi
+        ;;
+
+    ssh)
+        case "$2" in
+            on|enable)
+                systemctl enable --now ssh
+                log_success "SSH Service Enabled."
+                ;;
+            off|disable)
+                systemctl disable --now ssh
+                log_warning "SSH Service Disabled. Remote access locked."
+                ;;
+            *)
+                echo "Usage: sudo onyx ssh [on|off]"
+                ;;
+        esac
+        ;;
+
+    audit)
+        log_header "ONYX SECURITY AUDIT"
+        
+        # 1. USER SECURITY
+        TARGET_USER="${SUDO_USER:-$USER}"
+        if passwd -S "$TARGET_USER" | grep -q "01/01/1970"; then
+            log_warning "[!] SECURITY RISK: User '$TARGET_USER' is using a default or uninitialized password."
+        else
+            log_success "[OK] User '$TARGET_USER' credentials look hardened."
+        fi
+
+        # 2. MEMORY PROTECTION (Hardened Check)
+        ALGO_CHECK=$(zramctl --noheadings --output ALGORITHM /dev/zram0 2>/dev/null)
+        if [[ "$ALGO_CHECK" == "lz4" ]]; then
+            log_success "[OK] Memory: ZRAM Hardware Lock Active (lz4)."
+        else
+            log_error "[!] Memory: ZRAM algorithm mismatch (Found: $ALGO_CHECK)."
+        fi
+
+        # 3. DNS INTEGRITY (Split-DNS & Recursion)
+        if lsattr /etc/resolv.conf 2>/dev/null | grep -q "\-i\-"; then
+            log_success "[OK] DNS: Gateway is locked to 127.0.0.1 (Immutable)."
+        else
+            log_warning "[!] DNS: Gateway is NOT locked. Potential ISP/NetworkManager leak."
+        fi
+        
+        # Check if system state matches the YAML intent
+        if [[ "$ONYX_DNS_RECURSIVE" == "true" ]]; then
+            if grep -q "root-hints" /etc/unbound/unbound.conf.d/pi-zero.conf 2>/dev/null; then
+                log_success "[OK] DNS: Recursive Mode Active (Root Hints Loaded)."
+            else
+                log_error "[!] DNS: Recursion requested in YAML but NOT active in system."
+            fi
+        else
+            log_success "[OK] DNS: Forwarding Mode (User Defined in YAML)."
+        fi
+
+        # 4. SAFETY NET (IPTables Kill-switch)
+        # Check if the FORWARD chain is set to DROP (Standard Onyx Kill-switch)
+        if iptables -L FORWARD -n | grep -q "policy DROP"; then
+            log_success "[OK] IPTables: Safety Net is active (Forwarding Locked)."
+        elif iptables -L FORWARD -n | grep -q "REJECT"; then
+            log_success "[OK] IPTables: Safety Net is active (Forwarding Rejected)."
+        else
+            log_error "[!!!] IPTables: Safety Net is OFF. Traffic may leak to local network!"
+        fi
+
+        # 5. VPN STATUS
+        if wg show | grep -q "latest handshake"; then
+            log_success "[OK] VPN: WireGuard tunnel is established."
+        else
+            log_error "[!] VPN: No active handshake detected."
+        fi
+        ;;
+
+    auto)
+        # ==========================================================================
+        # COMMAND: auto
+        # USAGE: sudo onyx auto [on|off]
+        # PURPOSE: Toggles Automotive Gateway (Android Auto / Gadget Mode)
+        # ==========================================================================
+        
+        # 1. Source Required Libraries (Script 2)
+        source "$MODULES_DIR/network/vlan_manager.sh"
+        source "$MODULES_DIR/network/firewall_builder.sh"
+        source "$MODULES_DIR/system/android_auto.sh"
+
+        case "$2" in
+            on|enable)
+                log_header "ACTIVATING AUTOMOTIVE GATEWAY"
+
+                # Trigger the Product Logic (Script 3)
+                # This function handles VLANs, Firewall Injections, and Gadget Mode
+                product_setup_android_auto
+                
+                log_success "Automotive Gateway is now ACTIVE."
+                log_info "Run 'sudo onyx status' to verify network isolation."
+                ;;
+
+            off|disable)
+                log_header "DEACTIVATING AUTOMOTIVE GATEWAY"
+                
+                # 1. Shut down the proxy engine
+                log_step "Stopping Proxy Engine..."
+                systemctl stop android-proxy-rs 2>/dev/null
+                systemctl disable android-proxy-rs 2>/dev/null
+                
+                # 2. Tear down the VLAN hardware
+                log_step "Removing VLAN interface..."
+                ip link delete "vlan${ONYX_AA_VLAN_ID}" 2>/dev/null
+                
+                # 3. Cleanup DHCP
+                log_step "Cleaning DHCP leases..."
+                rm -f "/etc/dnsmasq.d/10-vlan${ONYX_AA_VLAN_ID}.conf"
+                systemctl restart dnsmasq
+                
+                log_warning "Car Mode disabled. Note: USB Gadget changes require a reboot to fully revert."
+                log_info "Run 'sudo onyx provision' to reset firewall to default state."
+                ;;
+
+            *)
+                echo -e "Usage: sudo onyx auto [on|off]"
+                exit 1
+                ;;
+        esac
+        ;;
+    
+    auto_status)
+        # === 5. AUTOMOTIVE GATEWAY (Android Auto) ===
+        echo -e "\n${BLUE}=== 5. AUTOMOTIVE GATEWAY ===${NC}"
+
+        # Detect VLAN from config (Loaded via onyx CLI)
+        AA_IFACE="vlan${ONYX_AA_VLAN_ID:-20}"
+
+        # 1. Hardware Check
+        echo -n "• AA VLAN ($AA_IFACE):  "
+        if ip link show "$AA_IFACE" &>/dev/null; then
+            AA_IP=$(ip -4 addr show "$AA_IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+            echo -e "${GREEN}ACTIVE ($AA_IP)${NC}"
+        else
+            echo -e "${YELLOW}INACTIVE / DISABLED${NC}"
+        fi
+
+        # 2. Proxy Service Check
+        echo -n "• Proxy Engine:   "
+        if systemctl is-active android-proxy-rs &>/dev/null; then
+            echo -e "${GREEN}RUNNING (Port: ${ONYX_AA_PROXY_PORT:-5000})${NC}"
+        else
+            echo -e "${RED}STOPPED${NC}"
+        fi
+
+        # 3. Security Isolation Check
+        echo -n "• Network Isolation: "
+        # Check if a DROP rule exists between the AA VLAN and the main Hotspot (uap0)
+        if iptables -L FORWARD -n | grep -q "DROP.*$AA_IFACE.*uap0"; then
+            echo -e "${GREEN}SECURED (Isolated from LAN)${NC}"
+        else
+            echo -e "${YELLOW}OPEN (Shared with LAN)${NC}"
+        fi
+
+        # 4. Handshake Port Check
+        echo -n "• Handshake Ports:  "
+        if iptables -L INPUT -n | grep -q "${ONYX_AA_TCP_PORTS%%,*}"; then
+            echo -e "${GREEN}OPEN (Listening for Phone)${NC}"
+        else
+            echo -e "${RED}CLOSED (Handshake will fail)${NC}"
+        fi
+
+        # 5. Uplink Strategy
+        echo -n "• Uplink Strategy:  "
+        if [[ "$ONYX_AA_VPN_ONLY" == "true" ]]; then
+            echo -e "${BLUE}VPN-ONLY (High Privacy)${NC}"
+        else
+            echo -e "${YELLOW}CAR-MODE (Direct WAN / High Stability)${NC}"
+        fi
+        ;;
+
+    hardener)
+        # Source the libraries
+        source "$ONYX_ROOT/lib/hardening_execution.sh"
+        source "$ONYX_ROOT/lib/hardening_intel.sh"
+        source "$ONYX_ROOT/lib/hardening_protection.sh"
+        source "$ONYX_ROOT/lib/hardening_rules.sh"
+
+        # Dependency check for YAML processing
+        if ! command -v yq &> /dev/null; then
+            log_info "Installing yq dependency..."
+            wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
+            chmod +x /usr/local/bin/yq
+        fi
+
+        case "$2" in
+            audit)   audit_state ;;
+            repair)  repair_state ;;
+            panic)   panic_lock ;;
+            build)   build_rule "${@:3}" ;;
+            delete)  delete_rule "${@:3}" ;;
+            toggle)  toggle_rule "$3" "$4" ;;
+            *)       echo "Usage: sudo onyx hardener {audit|repair|panic|build|delete|toggle}" ;;
+        esac
+        ;;
+
+    network)
+        source "$ONYX_ROOT/lib/network/network.sh"
+        case "$2" in
+            repair)  repair_state ;;
+            panic)   panic_lock ;;
+            build)   build_rule "${@:3}" ;;
+            delete)  delete_rule "${@:3}" ;;
+            toggle)  toggle_rule "$3" "$4" ;;
+            ""|audit) ;;
+            *)       echo "Usage: sudo onyx audit {repair|panic|build|delete|toggle}" ;;
+        esac
+        ;;
+
+    *)
+        show_usage
+        exit 1
+        ;;
+esac
