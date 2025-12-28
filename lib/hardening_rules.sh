@@ -415,8 +415,8 @@ function apply_syn_proxy() {
 function apply_port_scrambling() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying Port Scrambling (Source Port Randomization)..."
-        # Randomizes the source port for all outbound VPN traffic
-        iptables -t nat -A POSTROUTING -p udp --dport $ONYX_VPN_PORT -j MASQUERADE --random-source
+        # nf_tables uses --random for source port entropy
+        iptables -t nat -A POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random
     fi
 }
 
@@ -428,9 +428,8 @@ function check_port_scrambling() {
 function apply_packet_padding() {
     if [[ "$1" == "true" ]]; then
         log_step "Obfuscating Packet Shape (IP ID & TTL Jitter)..."
-        # Randomize IP ID sequence to prevent OS sequencing fingerprinting
-        iptables -t mangle -A POSTROUTING -o wg0 -j ID -i --id 0 # Note: requires xtables-addons
-        # Apply TTL jitter (64 +/- 1) to prevent hop-count analysis
+        # Requires xtables-addons
+        iptables -t mangle -A POSTROUTING -o wg0 -j ID --id 0
         iptables -t mangle -A POSTROUTING -o wg0 -j TTL --ttl-set 64
     fi
 }
