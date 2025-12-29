@@ -43,8 +43,10 @@ chattr +i /etc/resolv.conf
 log_success "Gateway DNS Locked to 127.0.0.1"
 
 # 2. RaspAP Hotspot (The Web Interface)
-log_info "Phase 2b: RaspAP Hotspot"
-source "$MODULES_DIR/system/raspap.sh"
+#log_info "Phase 2b: RaspAP Hotspot"
+#source "$MODULES_DIR/system/raspap.sh"
+log_info "Phase 2b: Native Hotspot"
+source "$MODULES_DIR/network/hotspot.sh"
     
 # 3. Dashboard (The CLI Monitor)
 log_info "Phase 2c: CLI Dashboard"
