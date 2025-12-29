@@ -109,7 +109,8 @@ case "$COMMAND" in
         STATUS_SCRIPT="$ONYX_ROOT/lib/firmware/firmware.sh"
 
         if [ -f "$STATUS_SCRIPT" ]; then
-            source "$STATUS_SCRIPT"
+            # Pass all flags (e.g., --fresh-hard) to the script
+            source "$STATUS_SCRIPT" "${@:2}"
         else
             log_error "Firmware module not found at $STATUS_SCRIPT"
             log_info "Please ensure lib/firmware/firmware.sh exists."
