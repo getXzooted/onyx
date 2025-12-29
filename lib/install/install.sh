@@ -5,7 +5,7 @@
 check_root
 check_env
 
-log_header "STARTING INSTALLATION (PHASE 1)"
+log_header "--- STARTING INSTALLATION ---"
             
 # 1. Install Dependencies & Hardening
 log_info "Phase 1: System Dependencies & Hardening"
