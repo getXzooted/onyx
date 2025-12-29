@@ -667,13 +667,13 @@ function apply_unbound_filtered() {
 
 
 # --- GEOPRIVACY WORKER ---
-function check_geoblock() {
+function check_geo_blocking() {
     # Check if the blocking loop is present in the live firewall
     iptables -L INPUT -n | grep -q "DROP" && [[ -f "/etc/onyx/firewall/geo_block.list" ]] && return 0
     return 1
 }
 
-function apply_geoblock() {
+function apply_geo_blocking() {
     if [[ "$1" == "true" ]]; then
         log_step "Enforcing Geoblock Intel..."
         /usr/local/bin/onyx network repair # Triggers the safety-net generator
