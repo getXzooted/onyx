@@ -44,11 +44,40 @@ build_rule INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 build_rule OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
 build_rule FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 
-# DHCP: Essential for Hotspot Clients
+# 3. SENTINEL: Retaliatory Honey Ports
+# Place this early to trap scanners before they hit other rules.
+if [[ "$ONYX_SENTINEL_TRAP" == "true" ]]; then
+    # Traps Telnet, RDP, and SSH (if non-standard) into the TARPIT
+    iptables -A INPUT -p tcp -m multiport --dports 23,3389 -j TARPIT
+fi
+
+# 4. Localhost
+build_rule INPUT -i lo -j ACCEPT
+build_rule OUTPUT -o lo -j ACCEPT
+
+# 5. GEOPRIVACY: Block high-risk jurisdictions
+# Placed after Local Access so you can still manage the Pi locally.
+if [[ "$ONYX_GEOBLOCK" == "true" ]] && [[ -f "/etc/onyx/firewall/geo_block.list" ]]; then
+    while read -r range; do
+        iptables -A INPUT -s "\$range" -j DROP
+    done < "/etc/onyx/firewall/geo_block.list"
+fi
+
+# 6. DPI LITE: Telemetry Blackout
+# MUST be placed before the general FORWARD/ACCEPT rules.
+if [[ "$ONYX_TELEMETRY_BLACKOUT" == "true" ]]; then
+    SIGNATURES=("telemetry" "analytics" "metrics" "vortex.data")
+    for SIG in "\${SIGNATURES[@]}"; do
+        iptables -A FORWARD -m string --algo bm --string "\$SIG" -j REJECT
+        iptables -A OUTPUT -m string --algo bm --string "\$SIG" -j REJECT
+    done
+fi
+
+# 7. DHCP: Essential for Hotspot Clients
 build_rule INPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
 build_rule OUTPUT -p udp --dport 67:68 --sport 67:68 -j ACCEPT
 
-# Universal Local Access (RFC1918)
+# 8. Universal Local Access (RFC1918)
 # LAN Access: Full RFC1918 Coverage
 build_rule INPUT -s 10.0.0.0/8 -j ACCEPT
 build_rule OUTPUT -d 10.0.0.0/8 -j ACCEPT
@@ -57,18 +86,14 @@ build_rule OUTPUT -d 172.16.0.0/12 -j ACCEPT
 build_rule INPUT -s 192.168.0.0/16 -j ACCEPT
 build_rule OUTPUT -d 192.168.0.0/16 -j ACCEPT
 
-# Localhost
-build_rule INPUT -i lo -j ACCEPT
-build_rule OUTPUT -o lo -j ACCEPT
-
-# VPN Transport (The Only Way Out)
+# 9. VPN Transport (The Only Way Out)
 build_rule OUTPUT -d $ONYX_VPN_ENDPOINT -p udp --dport $ONYX_VPN_PORT -j ACCEPT
 
-# Tunnel Traffic (Allow Pi to use the VPN)
+# 10. Tunnel Traffic (Allow Pi to use the VPN)
 build_rule INPUT -i wg0 -j ACCEPT
 build_rule OUTPUT -o wg0 -j ACCEPT
 
-# NAT & Tunnel Forwarding
+# 11. NAT & Tunnel Forwarding
 iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
 build_rule FORWARD -i wg0 -j ACCEPT
 build_rule FORWARD -o wg0 -j ACCEPT

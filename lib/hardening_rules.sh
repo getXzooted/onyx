@@ -607,13 +607,60 @@ function apply_default_deny() {
 }
 
 function check_ttl_masking() {
-    # Verify if TTL mangling is active
-    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to" && return 0 || return 1
+    local DESIRED=$1
+    local CURRENT=$(iptables -t mangle -L POSTROUTING -n | grep "TTL set to" | awk '{print $NF}')
+    
+    [[ "$DESIRED" == "off" ]] && return 0
+
+    case "$DESIRED" in
+        windows) VAL="128" ;;
+        linux)   VAL="64"  ;;
+        solaris) VAL="255" ;;
+        *) return 1 ;;
+    esac
+
+    [[ "$CURRENT" == "$VAL" ]] && return 0 || return 1
 }
 
 function apply_ttl_masking() {
+    local MODE=$1
+    [[ "$MODE" == "off" ]] && return 0
+
+    case "$MODE" in
+        windows) VAL="128" ;;
+        linux)   VAL="64"  ;;
+        solaris) VAL="255" ;;
+    esac
+
+    log_step "Applying TTL Mask: Appearing as $MODE hardware..."
+    # Force the OS identity at the packet level
+    iptables -t mangle -A POSTROUTING -j TTL --ttl-set "$VAL"
+    log_success "TTL Identity set to $VAL."
+}
+
+
+# --- GEOPRIVACY WORKER ---
+function check_geoblock() {
+    # Check if the blocking loop is present in the live firewall
+    iptables -L INPUT -n | grep -q "DROP" && [[ -f "/etc/onyx/firewall/geo_block.list" ]] && return 0
+    return 1
+}
+
+function apply_geoblock() {
     if [[ "$1" == "true" ]]; then
-        log_step "Applying TTL Stealth Masking..."
-        iptables -t mangle -A POSTROUTING -j TTL --ttl-set 64
+        log_step "Enforcing Geoblock Intel..."
+        /usr/local/bin/onyx network repair # Triggers the safety-net generator
+    fi
+}
+
+# --- DPI LITE WORKER ---
+function check_telemetry_blackout() {
+    iptables -L FORWARD -n | grep -q "STRING match \"telemetry\"" && return 0 || return 1
+}
+
+function apply_telemetry_blackout() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Engaging Telemetry Blackout..."
+        /usr/local/bin/onyx network repair
     fi
 }
