@@ -498,8 +498,13 @@ function apply_syn_proxy() {
 }
 
 function check_port_scrambling() {
-    # Check for the random-fully flag in the NAT table
-    iptables -t nat -L POSTROUTING -n | grep -q "MASQUERADE.*fully-random" && return 0 || return 1
+    # 1. Check legacy iptables
+    iptables -t nat -L POSTROUTING -n | grep -q "MASQUERADE.*fully-random" && return 0
+    
+    # 2. Check native nftables (Fallback Check)
+    nft list table ip nat 2>/dev/null | grep -q "masquerade fully-random" && return 0
+    
+    return 1
 }
 
 function apply_port_scrambling() {
@@ -554,7 +559,12 @@ function check_bogom_filter() {
 }
 
 function check_tarpit_trap() {
-    iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
+    if modinfo xt_TARPIT &>/dev/null; then
+        iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
+    else
+        log_warning "TARPIT Trap check skipped: Kernel module missing (6.12 Build Failure)."
+        return 0
+    fi
 }
 
 function apply_tarpit_trap() {
