@@ -120,11 +120,15 @@ case "$COMMAND" in
         log_step "Pulling updates from repository..."
         cd "$ONYX_ROOT" || { log_error "Could not access $ONYX_ROOT"; exit 1; }
         
-        # We run git pull as the current user (which is root via the CLI check)
-        if git pull; then
-            log_success "Core firmware updated successfully."
+        # Fetch latest and force reset to match origin
+        git fetch --all &>/dev/null
+        local CURRENT_BRANCH=$(git branch --show-current)
+        
+        if git reset --hard "origin/$CURRENT_BRANCH"; then
+            log_success "Core logic reset to latest version ($CURRENT_BRANCH)."
         else
-            log_error "Git pull failed. Check internet connection or repository state."
+            log_error "Update failed. Check internet connection or git remote."
+            exit 1
         fi
         
         # 4. Restore configurations from backup
