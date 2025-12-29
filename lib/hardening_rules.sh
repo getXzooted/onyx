@@ -559,10 +559,14 @@ function check_bogom_filter() {
 }
 
 function check_tarpit_trap() {
-    if modinfo xt_TARPIT &>/dev/null; then
-        iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
+    if [[ "$1" == "true" ]]; then
+        if modinfo xt_TARPIT &>/dev/null; then
+            iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
+        else
+            log_warning "TARPIT Trap check skipped: Kernel module missing (6.12 Build Failure)."
+            return 0
+        fi
     else
-        log_warning "TARPIT Trap check skipped: Kernel module missing (6.12 Build Failure)."
         return 0
     fi
 }
