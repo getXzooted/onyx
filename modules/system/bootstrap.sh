@@ -16,12 +16,18 @@ function system_bootstrap() {
     apt-get update -qq
     
     # 2. Install Core Dependencies
+    # - bc: Arbitrary precision calculator
     # - wireguard: VPN protocol
     # - iptables: Firewall management
     # - unbound: Recursive DNS resolver
     # - curl/git: Utilities
     # - qrencode: For generating QR codes in terminal (cool feature for later)
-    DEPENDENCIES=(bc wireguard iptables unbound curl git qrencode dnsmasq hostapd macchanger ethtool ) #xtables-addons-common when kernel 6.12 supported
+    # - dnsmasq: Lightweight DHCP and DNS server
+    # - hostapd: WiFi access point management
+    # - macchanger: Change MAC addresses for privacy
+    # - ethtool: Ethernet device settings
+    # - xtables-addons-common: Additional iptables modules (when kernel 6.12 supported)
+    DEPENDENCIES=(bc wireguard iptables unbound curl git qrencode dnsmasq hostapd macchanger ethtool )
     
     log_step "Installing dependencies: ${DEPENDENCIES[*]}..."
     
