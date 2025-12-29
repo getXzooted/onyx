@@ -181,6 +181,41 @@ case "$COMMAND" in
         $ONYX_ROOT/bin/onyx network repair
         ;;
 
+    firmware)
+        log_header "ONYX FIRMWARE UPDATE"
+        
+        # 1. Define temporary backup locations
+        ONYX_BAK="/tmp/onyx.yml.bak"
+        HARD_BAK="/tmp/hardening.yml.bak"
+        
+        # 2. Backup current configurations
+        log_step "Backing up user configurations..."
+        cp "$ONYX_YAML" "$ONYX_BAK" 2>/dev/null
+        cp "$HARDENING_YAML" "$HARD_BAK" 2>/dev/null
+        
+        # 3. Pull latest code from Git
+        log_step "Pulling updates from repository..."
+        cd "$ONYX_ROOT" || { log_error "Could not access $ONYX_ROOT"; exit 1; }
+        
+        # We run git pull as the current user (which is root via the CLI check)
+        if git pull; then
+            log_success "Core firmware updated successfully."
+        else
+            log_error "Git pull failed. Check internet connection or repository state."
+        fi
+        
+        # 4. Restore configurations from backup
+        log_step "Restoring user configurations..."
+        [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML"
+        [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML"
+        
+        # 5. Re-apply permissions and symlinks to ensure new scripts are executable
+        find "$ONYX_ROOT" -name "*.sh" -exec chmod +x {} \;
+        chmod +x "$ONYX_ROOT/bin/onyx"
+        
+        log_success "Firmware update sequence complete."
+        ;;
+
     status)
         # 1. Check if the diagnostic tool exists
         STATUS_SCRIPT="$ONYX_ROOT/lib/status/onyx_status.sh"
