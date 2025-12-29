@@ -57,7 +57,7 @@ build_rule OUTPUT -o lo -j ACCEPT
 
 # 5. GEOPRIVACY: Block high-risk jurisdictions
 # Placed after Local Access so you can still manage the Pi locally.
-if [[ "$ONYX_GEOBLOCK" == "true" ]] && [[ -f "/etc/onyx/firewall/geo_block.list" ]]; then
+if [[ "$ONYX_GEO_BLOCKING" == "true" ]] && [[ -f "/etc/onyx/firewall/geo_block.list" ]]; then
     while read -r range; do
         iptables -A INPUT -s "\$range" -j DROP
     done < "/etc/onyx/firewall/geo_block.list"
