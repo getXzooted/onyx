@@ -9,6 +9,11 @@ export ONYX_USER="root"
 # --- Networking Defaults ---
 export ONYX_DEFAULT_HOTSPOT_IP="10.3.141.1"
 export ONYX_DEFAULT_VLAN_ID=20
+export ONYX_HOTSPOT_IFACE="uap0"
+export ONYX_HOTSPOT_IP="10.3.141.1"
+export ONYX_HOTSPOT_MASK="24"
+export ONYX_HOTSPOT_DHCP_START="10.3.141.50"
+export ONYX_HOTSPOT_DHCP_END="10.3.141.255"
 
 # --- System Paths ---
 export CORE_DIR="$ONYX_ROOT/core"
