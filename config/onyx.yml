@@ -18,6 +18,17 @@ use_unbound: true
 # false = Forwarding (Speed Mode - Uses external providers)
 dns_recursive: true
 
+# --- HOTSPOT SETTINGS ---
+hotspot_iface: "uap0"
+hotspot_ip: "10.3.141.1"
+hotspot_mask: "24"
+wifi_ssid: "Onyx_Gateway"
+wifi_password: "ChangeMe123"
+
+# --- DHCP RANGE ---
+dhcp_start: "10.3.141.50"
+dhcp_end: "10.3.141.255"
+
 # --- ANDROID AUTO SETTINGS ---
 aa_enabled: true
 aa_vlan_id: 20
