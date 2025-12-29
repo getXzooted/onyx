@@ -223,7 +223,7 @@ function apply_use_zram() {
     TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
     ZRAM_SIZE=$(echo "$TOTAL_RAM * 0.5" | bc | cut -d. -f1)
 
-    HARDWARE LOCK: Apply algorithm and dynamic size
+    # HARDWARE LOCK: Apply algorithm and dynamic size
     if [ -b /dev/zram0 ]; then
         log_step "Locking hardware: ${ZRAM_SIZE}M @ lz4..."
         # We use the successful --find flag with the new dynamic size
