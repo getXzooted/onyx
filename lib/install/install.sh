@@ -7,15 +7,10 @@ check_env
 
 log_header "STARTING INSTALLATION (PHASE 1)"
             
-# 1. System Bootstrap (Updates)
-log_info "Phase 1: System Bootstrap & Hardening"
-source "$MODULES_DIR/system/bootstrap.sh"
-source "$MODULES_DIR/system/hardening.sh"
-
-# Memory Guard (Rule-based)
-# log_info "Phase 2: Applying Memory Guard..."
-# source "$ONYX_ROOT/lib/hardening_rules.sh"
-# apply_memory_guard "true" 
+# 1. Install Dependencies & Hardening
+log_info "Phase 1: System Dependencies & Hardening"
+source "$MODULES_DIR/lib/install/dependencies.sh"
+$ONYX_ROOT/bin/onyx network repair
 
 # 2. Schedule Reboot & Resume
 log_info "Phase 2: Scheduling Reboot & Resume"
