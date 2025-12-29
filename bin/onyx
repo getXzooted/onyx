@@ -163,16 +163,6 @@ case "$COMMAND" in
         core_update "$2"
         ;;
 
-    gui)
-        # Activates the Web Interface on demand
-        source "$MODULES_DIR/system/gui.sh"
-        system_activate_gui
-        
-        # Web Interface Configuration
-        source "$MODULES_DIR/system/gui_ssl.sh"
-        system_configure_gui
-        ;;
-
     # === INSTALL DASHBOARD ===
     dashboard)
         source "$MODULES_DIR/system/dashboard.sh"
