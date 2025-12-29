@@ -9,7 +9,7 @@ log_header "STARTING INSTALLATION (PHASE 1)"
             
 # 1. Install Dependencies & Hardening
 log_info "Phase 1: System Dependencies & Hardening"
-source "$MODULES_DIR/lib/install/dependencies.sh"
+source "$ONYX_ROOT/lib/install/dependencies.sh"
 $ONYX_ROOT/bin/onyx network repair
 
 # 2. Schedule Reboot & Resume
