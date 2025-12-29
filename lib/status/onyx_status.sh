@@ -42,14 +42,16 @@ fi
 # === 2. SECURITY ARCHITECTURE ===
 echo -e "\n${GREEN}=== 2. SECURITY CONFIGURATION ===${NC}"
 
-# CLIENT SECURITY (What connected phones use)
+# CLIENT SECURITY (Checking the new Native Config location)
 echo -n "• Client DNS:     "
-if grep -q "127.0.0.1#5335" /etc/dnsmasq.d/090_raspap.conf 2>/dev/null; then
+HOTSPOT_CONF="/etc/dnsmasq.d/onyx-hotspot.conf"
+
+if grep -q "127.0.0.1#5335" "$HOTSPOT_CONF" 2>/dev/null; then
     echo -e "${GREEN}SECURE (Unbound - Privacy)${NC}"
-elif grep -q "1.1.1.1" /etc/dnsmasq.d/090_raspap.conf 2>/dev/null; then
+elif grep -q "1.1.1.1" "$HOTSPOT_CONF" 2>/dev/null; then
     echo -e "${YELLOW}FALLBACK (Cloudflare - Secure)${NC}"
 else
-    echo -e "${RED}UNKNOWN / LEAK RISK${NC}"
+    echo -e "${RED}UNKNOWN / LEAK RISK (Check $HOTSPOT_CONF)${NC}"
 fi
 
 # ROUTER SECURITY (What the Pi itself uses - The "Split Brain" Check)
