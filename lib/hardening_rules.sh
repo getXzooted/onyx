@@ -640,14 +640,15 @@ function apply_ttl_masking() {
 
 # --- SENTINEL TRAP WORKER ---
 function check_sentinel_trap() {
-    # Verify if TARPIT rule exists in the INPUT chain
+    # Verify if the TARPIT rule exists in the INPUT chain
     iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
 }
 
 function apply_sentinel_trap() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying Sentinel Trap (Honeypot Active)..."
-        /usr/local/bin/onyx network repair
+        # Directly inject the retaliatory honey ports
+        build_rule INPUT -p tcp -m multiport --dports 23,3389 -j TARPIT
     fi
 }
 
@@ -666,28 +667,39 @@ function apply_unbound_filtered() {
 }
 
 
-# --- GEOPRIVACY WORKER ---
+# --- GEOBLOCKING WORKER ---
 function check_geo_blocking() {
-    # Check if the blocking loop is present in the live firewall
+    # Verify if drops exist and the intelligence file is present
     iptables -L INPUT -n | grep -q "DROP" && [[ -f "/etc/onyx/firewall/geo_block.list" ]] && return 0
     return 1
 }
 
 function apply_geo_blocking() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Enforcing Geoblock Intel..."
-        /usr/local/bin/onyx network repair # Triggers the safety-net generator
+    local GEO_LIST="/etc/onyx/firewall/geo_block.list"
+    if [[ "$1" == "true" ]] && [[ -f "$GEO_LIST" ]]; then
+        log_step "Enforcing Geoblocking Intel..."
+        # Loop the intelligence list and inject rules idempotently
+        while read -r range; do
+            [[ -z "$range" ]] && continue
+            build_rule INPUT -s "$range" -j DROP
+        done < "$GEO_LIST"
     fi
 }
 
 # --- DPI LITE WORKER ---
 function check_telemetry_blackout() {
+    # Verify kernel string matching for telemetry is active
     iptables -L FORWARD -n | grep -q "STRING match \"telemetry\"" && return 0 || return 1
 }
 
 function apply_telemetry_blackout() {
     if [[ "$1" == "true" ]]; then
         log_step "Engaging Telemetry Blackout..."
-        /usr/local/bin/onyx network repair
+        local SIGNATURES=("telemetry" "analytics" "metrics" "vortex.data")
+        for SIG in "${SIGNATURES[@]}"; do
+            # Inject signatures into both Forwarding and Output chains
+            build_rule FORWARD -m string --algo bm --string "$SIG" -j REJECT
+            build_rule OUTPUT -m string --algo bm --string "$SIG" -j REJECT
+        done
     fi
 }
