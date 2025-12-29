@@ -1,0 +1,12 @@
+# /opt/onyx/config/assets.yml
+assets:
+  sentinel_dns:
+    source: "https://raw.githubusercontent.com/stevenblack/hosts/master/hosts"
+    path: "/etc/unbound/unbound.conf.d/onyx-sentinel.conf"
+    type: "unbound_filter"
+    action: "systemctl restart unbound"
+
+  yq_processor:
+    source: "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm"
+    path: "/usr/local/bin/yq"
+    type: "binary"
