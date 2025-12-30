@@ -285,7 +285,37 @@ function check_forensic_zero() {
 }
 
 function apply_forensic_zero() {
-    
+    if [[ "$1" == "true" ]]; then
+        log_step "Configuring Official log2ram (Forensic-Zero)..."
+
+        # 1. NO APT CALLS: bc is already guaranteed by dependencies.sh
+
+        # 2. SURGICAL INSTALL: Prevent the "Blowout"
+        if [[ ! -f "/usr/local/bin/log2ram" ]]; then
+            curl -L https://github.com/azlux/log2ram/archive/master.tar.gz | tar zx
+            cd log2ram-master
+            
+            # RUN THE INSTALLER but stop it from starting the service immediately
+            ./install.sh &>/dev/null
+            systemctl stop log2ram &>/dev/null
+            systemctl disable log2ram &>/dev/null
+            
+            cd .. && rm -rf log2ram-master
+        fi
+
+        # 3. DYNAMIC CALCULATION: 25% of RAM
+        local LOG_PERCENT="0.25"
+        local TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+        local CALCULATED_SIZE=$(echo "$TOTAL_RAM * $LOG_PERCENT" | bc | cut -d. -f1)
+        
+        # 4. Update Config & Enable for NEXT boot ONLY
+        sed -i "s/SIZE=40M/SIZE=${CALCULATED_SIZE}M/" /etc/log2ram.conf
+        sed -i 's/MAIL=true/MAIL=false/' /etc/log2ram.conf
+        
+        # We enable it so it starts on REBOOT, but we DO NOT 'start' it now.
+        systemctl enable log2ram &>/dev/null
+        log_success "Forensic-Zero: Scaled to ${CALCULATED_SIZE}M. REBOOT REQUIRED."
+    fi
 }
 
 function check_dark_mode() {
