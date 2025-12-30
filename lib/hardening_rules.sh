@@ -694,20 +694,37 @@ function apply_unbound_filtered() {
 
 # --- GEOBLOCKING WORKER ---
 function check_geo_blocking() {
-    # Verify if drops exist and the intelligence file is present
-    iptables -L INPUT -n | grep -q "DROP" && [[ -f "/etc/onyx/firewall/geo_block.list" ]] && return 0
+    # Verify the set exists and the single iptables rule is present
+    ipset list onyx_geoblock &>/dev/null && \
+    iptables -L INPUT -n | grep -q "match-set onyx_geoblock src" && return 0
     return 1
 }
 
 function apply_geo_blocking() {
-    local GEO_LIST="/etc/onyx/firewall/geo_block.list"
-    if [[ "$1" == "true" ]] && [[ -f "$GEO_LIST" ]]; then
-        log_step "Enforcing Geoblocking Intel..."
-        # Loop the intelligence list and inject rules idempotently
+    local LIST="/etc/onyx/firewall/geo_block.list"
+    if [[ "$1" == "true" ]] && [[ -f "$LIST" ]]; then
+        log_step "Enforcing Sovereign Geoblock (Optimized via ipset)..."
+
+        # 1. Ensure ipset is installed
+        if ! command -v ipset &>/dev/null; then
+            apt-get install -y ipset &>/dev/null
+        fi
+
+        # 2. Create the set (hash:net handles CIDR ranges)
+        # -exist prevents errors if the set already exists
+        ipset create onyx_geoblock hash:net -exist
+
+        # 3. Flush and Load the set silently (The "High-Performance" way)
+        ipset flush onyx_geoblock
         while read -r range; do
-            [[ -z "$range" ]] && continue
-            build_rule INPUT -s "$range" -j DROP
-        done < "$GEO_LIST"
+            [[ -z "$range" || "$range" == \#* ]] && continue
+            # Add to the memory set, not the firewall chain
+            ipset add onyx_geoblock "$range" -exist
+        done < "$LIST"
+
+        # 4. Inject ONE single rule to the firewall
+        build_rule INPUT -m set --match-set onyx_geoblock src -j DROP
+        log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges loaded into memory."
     fi
 }
 
