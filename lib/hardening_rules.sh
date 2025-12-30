@@ -276,8 +276,10 @@ function check_use_zram() {
     return 0
 }
 
+# --- SURGICAL FORENSIC WORKER ---
+
 function check_forensic_zero() {
-    # Audit: Use findmnt to verify the FSTYPE is specifically tmpfs
+    # Audit: Definitive kernel check for tmpfs on /var/log
     if findmnt -n -o FSTYPE /var/log | grep -q "tmpfs"; then
         return 0
     fi
@@ -288,7 +290,7 @@ function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
         log_header "ENGAGING FORENSIC-ZERO (LOG-TO-RAM)"
 
-        # 1. Ensure dependencies are present
+        # 1. Ensure dependencies
         if ! command -v folder2ram &> /dev/null; then
             wget -qO /sbin/folder2ram https://raw.githubusercontent.com/bobafetthotmail/folder2ram/master/debian_package/sbin/folder2ram
             chmod +x /sbin/folder2ram
@@ -299,50 +301,40 @@ function apply_forensic_zero() {
         echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
 
         # 3. SURGICAL CLEARANCE
-        # We stop core services first to reduce the number of active blockers
+        # Stop primary loggers first to reduce noise
         systemctl stop rsyslog unbound hostapd dnsmasq &>/dev/null
         journalctl --relinquish-var &>/dev/null
 
-        # 4. THE PROTECTED SLEDGEHAMMER
-        # We use fuser but EXCLUDE the current process (onyx) and its parent (sudo)
-        log_info "Reclaiming /var/log (Protecting current session)..."
-        local CURRENT_PIDS="$$ $PPID"
+        # 4. THE PROTECTED STRIKE
+        # We identify all PIDs touching /var/log but exclude OUR OWN chain
+        log_info "Surgically reclaiming /var/log (Protecting current session)..."
         
-        # Identify all PIDs touching /var/log
-        local BLOCKERS=$(fuser /var/log 2>/dev/null | awk '{print $0}')
+        # Get the PID tree for the current session to protect it
+        local PROTECTED_PIDS="$$ $PPID $(pgrep -u root bash) $(pgrep onyx)"
+        
+        # Find every process holding /var/log open
+        local BLOCKERS=$(lsof +D /var/log | awk 'NR>1 {print $2}' | sort -u)
         
         for PID in $BLOCKERS; do
-            # Only kill if the PID is not us or our parent
-            if [[ ! " $CURRENT_PIDS " =~ " $PID " ]]; then
+            # Only kill if the PID is not in our protected list
+            if [[ ! " $PROTECTED_PIDS " =~ " $PID " ]]; then
                 kill -9 "$PID" 2>/dev/null
             fi
         done
         sleep 1
 
-        # 5. Attempt the Mount
+        # 5. ATTEMPT MOUNT
         if folder2ram -mountall &>/dev/null; then
-            log_success "Forensic-Zero: Logs verified in RAM."
+            log_success "Forensic-Zero: Logs successfully moved to RAM."
         else
-            log_warning "Mount busy. Attempting direct Sovereign Mount..."
-            # Final attempt to force the tmpfs mount over the directory
+            log_warning "Mountpoint busy. Attempting direct Shadow Mount..."
+            # Final fallback: Force a manual tmpfs mount
             mount -t tmpfs -o size=128M,nodev,nosuid,noatime tmpfs /var/log
         fi
 
-        # 6. Restore core infrastructure
+        # 6. Restore infrastructure
         systemctl start unbound hostapd dnsmasq &>/dev/null
     fi
-}
-
-function check_fforensic_zero() {
-    # Audit: Ensure /var/log is actively mounted as a RAM disk
-    mountpoint -q /var/log && mount | grep "on /var/log type tmpfs" > /dev/null && return 0 || return 1
-
-
-    # Verify /var/log is a mountpoint and specifically a tmpfs
-    if mountpoint -q /var/log && mount | grep "on /var/log type tmpfs" > /dev/null; then
-        return 0
-    fi
-    return 1
 }
 
 function apply_fforensic_zero() {
