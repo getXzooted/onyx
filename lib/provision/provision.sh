@@ -5,6 +5,9 @@
 check_root
 check_env
 
+mkdir -p /etc/onyx/firewall/
+mkdir -p /etc/unbound/unbound.conf.d/
+
 log_header "--- PROVISIONING SYSTEM ---"
             
 log_warning "Waiting for system time synchronization..."
