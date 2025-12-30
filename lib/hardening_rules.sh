@@ -276,13 +276,8 @@ function check_use_zram() {
     return 0
 }
 
-# --- SURGICAL FORENSIC WORKER ---
-
-# --- APEX FORENSIC WORKER: BIND-MOUNT SHADOWING ---
-
 function check_forensic_zero() {
-    # Audit: Definitive kernel check for tmpfs shadowing /var/log
-    # findmnt is smarter than grep; it sees through bind-mount chains
+    # Audit: Check if /var/log is actively a tmpfs mount
     if findmnt -n -o FSTYPE /var/log | grep -q "tmpfs"; then
         return 0
     fi
@@ -292,72 +287,32 @@ function check_forensic_zero() {
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
         log_step "Installing Official log2ram (Forensic-Zero)..."
-        
-        # 1. Ensure dependencies are present (including bc for calculation)
+
+        # 1. Ensure bc is present for calculation
         if ! command -v bc &> /dev/null; then
             apt-get update && apt-get install -y bc &>/dev/null
         fi
 
-        # 2. Install log2ram via official repository if missing
+        # 2. Install via official repo if missing
         if [[ ! -f "/usr/local/bin/log2ram" ]]; then
             curl -L https://github.com/azlux/log2ram/archive/master.tar.gz | tar zx
             cd log2ram-master && ./install.sh && cd ..
+            rm -rf log2ram-master
         fi
 
-        # 3. DYNAMIC CALCULATION: Scale log-disk to 25% of physical RAM
-        # On a 512MB Pi Zero, this results in ~128M
+        # 3. DYNAMIC CALCULATION: 25% of RAM
         local LOG_PERCENT="0.25"
         local TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
         local CALCULATED_SIZE=$(echo "$TOTAL_RAM * $LOG_PERCENT" | bc | cut -d. -f1)
         
-        log_info "Calculated Forensic RAM-disk: ${CALCULATED_SIZE}M (${LOG_PERCENT}% of memory)."
+        log_info "Sovereign Scale: Setting Log-RAM to ${CALCULATED_SIZE}M."
 
-        # 4. Update official config surgically
-        # We replace the default 40M with our dynamic Apex calculation
+        # 4. Update Official Config (NON-DESTRUCTIVE)
+        # We only change the config file. We DO NOT call mount/unmount.
         sed -i "s/SIZE=40M/SIZE=${CALCULATED_SIZE}M/" /etc/log2ram.conf
+        sed -i 's/MAIL=true/MAIL=false/' /etc/log2ram.conf
         
-        log_success "log2ram configured with dynamic scaling. REBOOT REQUIRED."
-    fi
-}
-
-function apply_fforensic_zero() {
-    if [[ "$1" == "true" ]]; then
-        # --- ONYX STEALTH: LOG-TO-RAM ---
-        log_step "Engaging Forensic-Zero (Log-to-RAM)..."
-        log_info "Redirecting logs to Volatile RAM..."
-
-        # 1. Manual Download (Apt-get fails on Pi Zero for this tool)
-        if ! command -v folder2ram &> /dev/null; then
-            log_step "Downloading folder2ram v0.4.1..."
-            wget -qO /sbin/folder2ram https://raw.githubusercontent.com/bobafetthotmail/folder2ram/master/debian_package/sbin/folder2ram
-            chmod +x /sbin/folder2ram
-        fi
-
-        # 2. Manual Configuration (Since -enable is missing in 0.4.1)
-        log_step "Configuring /var/log for RAM-disk..."
-        mkdir -p /etc/folder2ram
-        # Format: type [space] path [space] options
-        echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
-
-        # 3. Enable Systemd Service
-        folder2ram -enablesystemd &>/dev/null
-
-        # 4. Stop loggers so we can mount /var/log
-        log_step "Unlocking /var/log from system loggers..."
-        systemctl stop rsyslog unbound dnsmasq hostapd &>/dev/null
-        journalctl --relinquish-var &>/dev/null
-        
-        # 5. Mount the partitions
-        if folder2ram -mountall; then
-            # 6. Success: Flush and Restore services
-            journalctl --flush &>/dev/null
-            systemctl start rsyslog unbound dnsmasq hostapd &>/dev/null
-            log_success "Forensic-Zero Active: Logs are now in RAM."
-        else
-            # 7. Fallback: Restore loggers if mount failed
-            systemctl start rsyslog unbound dnsmasq hostapd &>/dev/null
-            log_error "Forensic-Zero: Mount failed (Target Busy). Reboot required."
-        fi
+        log_success "Forensic-Zero configured. REBOOT REQUIRED for session safety."
     fi
 }
 
