@@ -277,6 +277,10 @@ function check_use_zram() {
 }
 
 function check_forensic_zero() {
+    # Audit: Ensure /var/log is actively mounted as a RAM disk
+    mountpoint -q /var/log && mount | grep "on /var/log type tmpfs" > /dev/null && return 0 || return 1
+
+
     # Verify /var/log is a mountpoint and specifically a tmpfs
     if mountpoint -q /var/log && mount | grep "on /var/log type tmpfs" > /dev/null; then
         return 0
@@ -724,8 +728,8 @@ function apply_geo_blocking() {
 
 # --- DPI LITE WORKER ---
 function check_telemetry_blackout() {
-    # Look for any of our telemetry strings in the FORWARD chain
-    iptables -L FORWARD -n | grep -q "STRING match \"telemetry\"" && return 0 || return 1
+    # Check for the telemetry signature rule in the FORWARD chain
+    iptables -C FORWARD -m string --algo bm --string "telemetry" -j REJECT 2>/dev/null && return 0 || return 1
 }
 
 function apply_telemetry_blackout() {
