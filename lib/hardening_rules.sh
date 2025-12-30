@@ -520,19 +520,39 @@ function apply_port_scrambling() {
 }
 
 function check_packet_padding() {
-    # Verify TTL is set and the ID module is available
-    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to 64" && return 0 || return 1
+    # Instead of looking for '64', we look for the intent in hardening.yml
+    local INTENT=$(yq e '.hardening.system.ttl_masking' "$HARDENING_YAML")
+    case "$INTENT" in
+        windows) VAL="128" ;;
+        solaris) VAL="255" ;;
+        *)       VAL="64"  ;;
+    esac
+
+    # Verify if the padding/jitter rule is present and matches the TTL mask
+    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to $VAL" && return 0 || return 1
 }
 
 function apply_packet_padding() {
     if [[ "$1" == "true" ]]; then
-        log_step "Obfuscating Packet Shape (IP ID & TTL Jitter)..."
-        iptables -t mangle -A POSTROUTING -o wg0 -j TTL --ttl-set 64
-        # SAFE MODE: Only apply ID randomization if the module built successfully
-        if [ -f "/lib/modules/$(uname -r)/extra/xt_ID.ko" ] || modinfo xt_ID &>/dev/null; then
+        # 1. Fetch current TTL choice to remain consistent
+        local MASK_MODE=$(yq e '.hardening.system.ttl_masking' "$HARDENING_YAML")
+        case "$MASK_MODE" in
+            windows) TTL_VAL="128" ;;
+            solaris) TTL_VAL="255" ;;
+            *)       TTL_VAL="64"  ;;
+        esac
+
+        log_step "Applying Smart Padding (Inherited TTL: $TTL_VAL)..."
+        
+        # Apply the jitter/mask consistent with the chosen identity
+        iptables -t mangle -A POSTROUTING -o wg0 -j TTL --ttl-set "$TTL_VAL"
+        
+        # 2. Advanced Shape Obfuscation (IP ID Randomization)
+        if modinfo xt_ID &>/dev/null; then
             iptables -t mangle -A POSTROUTING -o wg0 -j ID --id 0
+            log_success "Packet Shape Obfuscated."
         else
-            log_warning "Packet ID randomization skipped: xt_ID module not found (6.12 Build Failure)."
+            log_warning "Advanced Padding (xt_ID) skipped: Kernel module missing."
         fi
     fi
 }
