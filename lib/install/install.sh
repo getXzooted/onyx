@@ -26,7 +26,7 @@ source "$MODULES_DIR/provision/ingest.sh"
 log_info "Phase 4: Asset Synchronization & Network Hardening"
 $ONYX_ROOT/bin/onyx network repair
 
-# 4. We also reboot in case no drag-and-drop happens.
+# 5. We also reboot in case no drag-and-drop happens.
 log_info "System will reboot now to continue installation..."
 sleep 3
 reboot
