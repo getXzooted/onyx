@@ -283,43 +283,44 @@ function check_forensic_zero() {
     fi
     return 1
 }
-
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
-        log_step "Installing Official log2ram (Forensic-Zero)..."
+        log_step "Applying Official log2ram (Forensic-Zero)..."
 
-        # 1. Dependency check (bc is already in global bootstrap)
+        # 1. OFFICIAL TROUBLESHOOTING: Vacuum journal so it fits in RAM
+        journalctl --vacuum-size=32M &>/dev/null
+        
+        # 2. OFFICIAL TROUBLESHOOTING: Limit SystemMaxUse
+        if ! grep -q "SystemMaxUse=20M" /etc/systemd/journald.conf; then
+            echo "SystemMaxUse=20M" >> /etc/systemd/journald.conf
+            systemctl restart systemd-journald &>/dev/null
+        fi
 
-        # 2. SILENT INSTALL: Prevent the "Blowout"
+        # 3. PASSIVE MANUAL INSTALL
         if [[ ! -f "/usr/local/bin/log2ram" ]]; then
-            curl -L https://github.com/azlux/log2ram/archive/master.tar.gz | tar zx
+            curl -L https://github.com/azlux/log2ram/archive/master.tar.gz | tar zxf -
             cd log2ram-master
-            
-            # SURGICAL STRIKE: Disable the 'systemctl start' inside the official installer
-            # This prevents it from mounting /var/log and killing your session now.
-            sed -i 's/systemctl start log2ram/systemctl enable log2ram/' install.sh
-            
+            # BROAD NEUTER: Deletes any line attempting a live start to prevent logout
+            sed -i '/systemctl start log2ram/d' install.sh
             ./install.sh &>/dev/null
             cd .. && rm -rf log2ram-master
         fi
 
-        # 3. DYNAMIC CALCULATION: Scale log-disk to 25% of RAM
+        # 4. PERCENTAGE CALCULATION (Using bc as requested)
         local LOG_PERCENT="0.25"
         local TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
         local CALCULATED_SIZE=$(echo "$TOTAL_RAM * $LOG_PERCENT" | bc | cut -d. -f1)
         
-        log_info "Sovereign Scale: Setting Log-RAM to ${CALCULATED_SIZE}M."
-
-        # 4. Update Config & Force REBOOT dependency
+        # 5. OFFICIAL CUSTOMIZATION: SIZE
+        # Sets the RAM disk size to your calculated percentage
         sed -i "s/SIZE=40M/SIZE=${CALCULATED_SIZE}M/" /etc/log2ram.conf
         sed -i 's/MAIL=true/MAIL=false/' /etc/log2ram.conf
         
-        # Ensure it is enabled for the NEXT boot, but do NOT start it now
+        # 6. ENFORCE REBOOT
         systemctl enable log2ram &>/dev/null
-        log_success "Forensic-Zero configured for ${CALCULATED_SIZE}M. REBOOT REQUIRED."
+        log_success "Forensic-Zero: ${CALCULATED_SIZE}M configured. REBOOT MANDATORY."
     fi
 }
-
 function check_dark_mode() {
     # Check if the dtparam for LEDs is in the config
     grep -q "dtparam=pwr_led_trigger=none" /boot/firmware/config.txt &>/dev/null && return 0 || return 1
