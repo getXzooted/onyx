@@ -6,7 +6,7 @@ check_root
 check_env
 
 log_header "--- STARTING INSTALLATION ---"
-            
+
 # 1. Install Dependencies
 log_info "Phase 1: System Dependencies"
 source "$ONYX_ROOT/lib/install/dependencies.sh"
