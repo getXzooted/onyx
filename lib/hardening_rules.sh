@@ -277,14 +277,10 @@ function check_use_zram() {
 }
 
 function check_forensic_zero() {
-    # 1. Verify if /var/log is a mountpoint
-    if mountpoint -q /var/log; then
-        # 2. STRICT: It MUST be a tmpfs (RAM-disk) to pass audit
-        if mount | grep "/var/log" | grep -q "tmpfs"; then
-            return 0
-        fi
+    # Verify /var/log is a mountpoint and specifically a tmpfs
+    if mountpoint -q /var/log && mount | grep "on /var/log type tmpfs" > /dev/null; then
+        return 0
     fi
-    # If not a mountpoint or not tmpfs, it is drifted
     return 1
 }
 
@@ -628,18 +624,16 @@ function apply_default_deny() {
 
 function check_ttl_masking() {
     local DESIRED=$1
-    local CURRENT=$(iptables -t mangle -L POSTROUTING -n | grep "TTL set to" | awk '{print $NF}')
-    
     [[ "$DESIRED" == "off" ]] && return 0
 
     case "$DESIRED" in
         windows) VAL="128" ;;
         linux)   VAL="64"  ;;
         solaris) VAL="255" ;;
-        *) return 1 ;;
     esac
 
-    [[ "$CURRENT" == "$VAL" ]] && return 0 || return 1
+    # Check the mangle table specifically for the "Set TTL" target
+    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to $VAL" && return 0 || return 1
 }
 
 function apply_ttl_masking() {
@@ -730,7 +724,7 @@ function apply_geo_blocking() {
 
 # --- DPI LITE WORKER ---
 function check_telemetry_blackout() {
-    # Verify kernel string matching for telemetry is active
+    # Look for any of our telemetry strings in the FORWARD chain
     iptables -L FORWARD -n | grep -q "STRING match \"telemetry\"" && return 0 || return 1
 }
 
