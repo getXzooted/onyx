@@ -291,44 +291,32 @@ function check_forensic_zero() {
 
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
-        log_header "ENGAGING FORENSIC-ZERO (SHADOW MOUNT)"
-
-        # 1. Clean start: Relinquish the systemd journal
-        # This tells journald to stop writing to /var/log/journal and move to /run/log
-        log_info "Relinquishing systemd-journald to volatile /run..."
-        journalctl --relinquish-var &>/dev/null
-
-        # 2. Prepare the RAM Shadow
-        # We use /run because it's already a guaranteed tmpfs on the Pi
-        local RAM_TMP="/run/onyx_log_ram"
-        mkdir -p "$RAM_TMP"
+        log_step "Installing Official log2ram (Forensic-Zero)..."
         
-        # Only mount if not already present
-        if ! mountpoint -q "$RAM_TMP"; then
-            mount -t tmpfs -o size=128M,nodev,nosuid,noatime tmpfs "$RAM_TMP"
+        # 1. Ensure dependencies are present (including bc for calculation)
+        if ! command -v bc &> /dev/null; then
+            apt-get update && apt-get install -y bc &>/dev/null
         fi
 
-        # 3. Synchronize Logs
-        # This prevents services from crashing when they can't find their log files
-        log_info "Syncing active logs to RAM..."
-        cp -a /var/log/* "$RAM_TMP/"
-
-        # 4. THE SHADOW STRIKE: Bind Mount
-        # This 'covers' the SD card with the RAM disk without killing existing handles
-        log_info "Shadowing /var/log with RAM disk..."
-        if mount --bind "$RAM_TMP" /var/log; then
-            log_success "Forensic-Zero: Shadow Mount established."
-        else
-            log_error "Shadow Mount failed. System state is inconsistent."
-            return 1
+        # 2. Install log2ram via official repository if missing
+        if [[ ! -f "/usr/local/bin/log2ram" ]]; then
+            curl -L https://github.com/azlux/log2ram/archive/master.tar.gz | tar zx
+            cd log2ram-master && ./install.sh && cd ..
         fi
 
-        # 5. Flush and Restart high-volume loggers
-        # This forces them to reopen their files on the NEW RAM-disk
-        log_info "Restarting core loggers to engage RAM disk..."
-        systemctl restart unbound hostapd dnsmasq &>/dev/null
+        # 3. DYNAMIC CALCULATION: Scale log-disk to 25% of physical RAM
+        # On a 512MB Pi Zero, this results in ~128M
+        local LOG_PERCENT="0.25"
+        local TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+        local CALCULATED_SIZE=$(echo "$TOTAL_RAM * $LOG_PERCENT" | bc | cut -d. -f1)
         
-        log_success "Forensic-Zero Active: 128MB RAM Disk shadowing /var/log."
+        log_info "Calculated Forensic RAM-disk: ${CALCULATED_SIZE}M (${LOG_PERCENT}% of memory)."
+
+        # 4. Update official config surgically
+        # We replace the default 40M with our dynamic Apex calculation
+        sed -i "s/SIZE=40M/SIZE=${CALCULATED_SIZE}M/" /etc/log2ram.conf
+        
+        log_success "log2ram configured with dynamic scaling. REBOOT REQUIRED."
     fi
 }
 
