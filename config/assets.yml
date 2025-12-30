@@ -7,10 +7,9 @@ assets:
     action: "systemctl restart unbound"
 
   geoblock_high_risk:
-    source: "https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/master/ipv4/cn.zone"
-    path: "/etc/onyx/firewall/geo_block.list"
+    source: "https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/refs/heads/master/ipv4/cn.cidr"
+    path: "/etc/onyx/config/geo_block.list"
     type: "ip_list"
-    action: "/usr/local/bin/onyx network repair"
 
   yq_processor:
     source: "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm"
