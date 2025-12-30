@@ -10,6 +10,9 @@ fi
 function network_safety_net() {
     log_header "CONFIGURING SAFETY NET (FIREWALL)"
 
+    # Ensure variables are loaded into this shell session
+    load_config
+
     # 1. CHECK VARIABLES
     if [[ -z "$ONYX_VPN_ENDPOINT" || -z "$ONYX_VPN_PORT" ]]; then
         log_error "Missing VPN Endpoint/Port. Cannot generate firewall rules."
