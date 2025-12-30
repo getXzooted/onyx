@@ -277,6 +277,59 @@ function check_use_zram() {
 }
 
 function check_forensic_zero() {
+    # Audit: Use findmnt for a definitive kernel-level check
+    if findmnt -n -o FSTYPE /var/log | grep -q "tmpfs"; then
+        return 0
+    fi
+    return 1
+}
+
+function apply_forensic_zero() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Engaging Forensic-Zero (Log-to-RAM)..."
+
+        # 1. Ensure dependencies are present
+        if ! command -v folder2ram &> /dev/null; then
+            wget -qO /sbin/folder2ram https://raw.githubusercontent.com/bobafetthotmail/folder2ram/master/debian_package/sbin/folder2ram
+            chmod +x /sbin/folder2ram
+        fi
+        
+        # Ensure fuser (psmisc) is available for the sledgehammer
+        if ! command -v fuser &> /dev/null; then
+            apt-get update && apt-get install -y psmisc &>/dev/null
+        fi
+
+        # 2. Rebuild RAM-disk configuration
+        mkdir -p /etc/folder2ram
+        echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
+
+        # 3. THE APEX SLEDGEHAMMER
+        log_info "Applying fuser sledgehammer to /var/log..."
+        
+        # Standard release attempts first
+        systemctl stop rsyslog unbound hostapd dnsmasq &>/dev/null
+        journalctl --relinquish-var &>/dev/null
+        
+        # Forcefully kill any remaining processes using the directory
+        # -m (mount) -k (kill) -i (interactive NO)
+        fuser -mk /var/log &>/dev/null
+        sleep 1
+        
+        # 4. Attempt the Mount
+        if folder2ram -mountall &>/dev/null; then
+            log_success "Forensic-Zero: Logs successfully moved to RAM."
+        else
+            log_warning "folder2ram failed. Attempting Direct Sovereign Mount..."
+            # Final manual fallback
+            mount -t tmpfs -o size=128M,nodev,nosuid,noatime tmpfs /var/log
+        fi
+
+        # 5. Restore core services
+        systemctl start unbound hostapd dnsmasq &>/dev/null
+    fi
+}
+
+function check_fforensic_zero() {
     # Audit: Ensure /var/log is actively mounted as a RAM disk
     mountpoint -q /var/log && mount | grep "on /var/log type tmpfs" > /dev/null && return 0 || return 1
 
@@ -288,7 +341,7 @@ function check_forensic_zero() {
     return 1
 }
 
-function apply_forensic_zero() {
+function apply_fforensic_zero() {
     if [[ "$1" == "true" ]]; then
         # --- ONYX STEALTH: LOG-TO-RAM ---
         log_step "Engaging Forensic-Zero (Log-to-RAM)..."
