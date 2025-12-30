@@ -7,10 +7,10 @@ check_env
 
 log_header "--- STARTING INSTALLATION ---"
             
-# 1. Install Dependencies & Hardening
-log_info "Phase 1: System Dependencies & Hardening"
+# 1. Install Dependencies
+log_info "Phase 1: System Dependencies"
 source "$ONYX_ROOT/lib/install/dependencies.sh"
-$ONYX_ROOT/bin/onyx network repair
+
 
 # 2. Schedule Reboot & Resume
 log_info "Phase 2: Scheduling Reboot & Resume"
@@ -21,6 +21,10 @@ system_setup_resume "provision"
 log_info "Phase 3: Auto-Provisioning Service"
 source "$MODULES_DIR/provision/install_service.sh"
 source "$MODULES_DIR/provision/ingest.sh"
+
+# 4. Asset Synchronization & Network Hardening
+log_info "Phase 4: Asset Synchronization & Network Hardening"
+$ONYX_ROOT/bin/onyx network repair
 
 # 4. We also reboot in case no drag-and-drop happens.
 log_info "System will reboot now to continue installation..."
