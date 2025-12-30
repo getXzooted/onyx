@@ -640,15 +640,20 @@ function apply_ttl_masking() {
 
 # --- SENTINEL TRAP WORKER ---
 function check_sentinel_trap() {
-    # Verify if the TARPIT rule exists in the INPUT chain
-    iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
+    # Check for the specific honey ports in the INPUT chain
+    iptables -L INPUT -n | grep -q "23,3389" && return 0 || return 1
 }
 
 function apply_sentinel_trap() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying Sentinel Trap (Honeypot Active)..."
-        # Directly inject the retaliatory honey ports
-        build_rule INPUT -p tcp -m multiport --dports 23,3389 -j TARPIT
+        # TACTICAL FALLBACK: Use TARPIT if available, otherwise force a TCP Reset
+        if modprobe xt_TARPIT 2>/dev/null; then
+            build_rule INPUT -p tcp -m multiport --dports 23,3389 -j TARPIT
+        else
+            log_warning "TARPIT module not found. Using standard TCP-Reset trap."
+            build_rule INPUT -p tcp -m multiport --dports 23,3389 -j REJECT --reject-with tcp-reset
+        fi
     fi
 }
 

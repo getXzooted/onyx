@@ -47,8 +47,8 @@ build_rule FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
 # 3. SENTINEL: Retaliatory Honey Ports
 # Place this early to trap scanners before they hit other rules.
 if [[ "$ONYX_SENTINEL_TRAP" == "true" ]]; then
-    # Traps Telnet, RDP, and SSH (if non-standard) into the TARPIT
-    iptables -A INPUT -p tcp -m multiport --dports 23,3389 -j TARPIT
+    # Matches the fallback logic in hardening_rules
+    iptables -A INPUT -p tcp -m multiport --dports 23,3389 -j REJECT --reject-with tcp-reset
 fi
 
 # 4. Localhost
@@ -59,6 +59,7 @@ build_rule OUTPUT -o lo -j ACCEPT
 # Placed after Local Access so you can still manage the Pi locally.
 if [[ "$ONYX_GEO_BLOCKING" == "true" ]] && [[ -f "/etc/onyx/firewall/geo_block.list" ]]; then
     while read -r range; do
+        [[ -z "\$range" ]] && continue
         iptables -A INPUT -s "\$range" -j DROP
     done < "/etc/onyx/firewall/geo_block.list"
 fi
