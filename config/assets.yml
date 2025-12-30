@@ -8,7 +8,7 @@ assets:
 
   geoblock_high_risk:
     source: "https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/refs/heads/master/ipv4/cn.cidr"
-    path: "/etc/onyx/config/geo_block.list"
+    path: "/etc/onyx/firewall/geo_block.list"
     type: "ip_list"
 
   yq_processor:
