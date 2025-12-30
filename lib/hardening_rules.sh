@@ -277,7 +277,7 @@ function check_use_zram() {
 }
 
 function check_forensic_zero() {
-    # Audit: Use findmnt for a definitive kernel-level check
+    # Audit: Use findmnt to verify the FSTYPE is specifically tmpfs
     if findmnt -n -o FSTYPE /var/log | grep -q "tmpfs"; then
         return 0
     fi
@@ -286,45 +286,49 @@ function check_forensic_zero() {
 
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
-        log_step "Engaging Forensic-Zero (Log-to-RAM)..."
+        log_header "ENGAGING FORENSIC-ZERO (LOG-TO-RAM)"
 
         # 1. Ensure dependencies are present
         if ! command -v folder2ram &> /dev/null; then
             wget -qO /sbin/folder2ram https://raw.githubusercontent.com/bobafetthotmail/folder2ram/master/debian_package/sbin/folder2ram
             chmod +x /sbin/folder2ram
         fi
-        
-        # Ensure fuser (psmisc) is available for the sledgehammer
-        if ! command -v fuser &> /dev/null; then
-            apt-get update && apt-get install -y psmisc &>/dev/null
-        fi
 
-        # 2. Rebuild RAM-disk configuration
+        # 2. Re-apply Configuration
         mkdir -p /etc/folder2ram
         echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
 
-        # 3. THE APEX SLEDGEHAMMER
-        log_info "Applying fuser sledgehammer to /var/log..."
-        
-        # Standard release attempts first
+        # 3. SURGICAL CLEARANCE
+        # We stop core services first to reduce the number of active blockers
         systemctl stop rsyslog unbound hostapd dnsmasq &>/dev/null
         journalctl --relinquish-var &>/dev/null
+
+        # 4. THE PROTECTED SLEDGEHAMMER
+        # We use fuser but EXCLUDE the current process (onyx) and its parent (sudo)
+        log_info "Reclaiming /var/log (Protecting current session)..."
+        local CURRENT_PIDS="$$ $PPID"
         
-        # Forcefully kill any remaining processes using the directory
-        # -m (mount) -k (kill) -i (interactive NO)
-        fuser -mk /var/log &>/dev/null
+        # Identify all PIDs touching /var/log
+        local BLOCKERS=$(fuser /var/log 2>/dev/null | awk '{print $0}')
+        
+        for PID in $BLOCKERS; do
+            # Only kill if the PID is not us or our parent
+            if [[ ! " $CURRENT_PIDS " =~ " $PID " ]]; then
+                kill -9 "$PID" 2>/dev/null
+            fi
+        done
         sleep 1
-        
-        # 4. Attempt the Mount
+
+        # 5. Attempt the Mount
         if folder2ram -mountall &>/dev/null; then
-            log_success "Forensic-Zero: Logs successfully moved to RAM."
+            log_success "Forensic-Zero: Logs verified in RAM."
         else
-            log_warning "folder2ram failed. Attempting Direct Sovereign Mount..."
-            # Final manual fallback
+            log_warning "Mount busy. Attempting direct Sovereign Mount..."
+            # Final attempt to force the tmpfs mount over the directory
             mount -t tmpfs -o size=128M,nodev,nosuid,noatime tmpfs /var/log
         fi
 
-        # 5. Restore core services
+        # 6. Restore core infrastructure
         systemctl start unbound hostapd dnsmasq &>/dev/null
     fi
 }
