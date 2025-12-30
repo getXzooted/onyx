@@ -278,8 +278,11 @@ function check_use_zram() {
 
 # --- SURGICAL FORENSIC WORKER ---
 
+# --- APEX FORENSIC WORKER: BIND-MOUNT SHADOWING ---
+
 function check_forensic_zero() {
-    # Audit: Definitive kernel check for tmpfs on /var/log
+    # Audit: Definitive kernel check for tmpfs shadowing /var/log
+    # findmnt is smarter than grep; it sees through bind-mount chains
     if findmnt -n -o FSTYPE /var/log | grep -q "tmpfs"; then
         return 0
     fi
@@ -288,52 +291,44 @@ function check_forensic_zero() {
 
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
-        log_header "ENGAGING FORENSIC-ZERO (LOG-TO-RAM)"
+        log_header "ENGAGING FORENSIC-ZERO (SHADOW MOUNT)"
 
-        # 1. Ensure dependencies
-        if ! command -v folder2ram &> /dev/null; then
-            wget -qO /sbin/folder2ram https://raw.githubusercontent.com/bobafetthotmail/folder2ram/master/debian_package/sbin/folder2ram
-            chmod +x /sbin/folder2ram
-        fi
-
-        # 2. Re-apply Configuration
-        mkdir -p /etc/folder2ram
-        echo "tmpfs /var/log size=128M,nodev,nosuid,noatime" > /etc/folder2ram/folder2ram.conf
-
-        # 3. SURGICAL CLEARANCE
-        # Stop primary loggers first to reduce noise
-        systemctl stop rsyslog unbound hostapd dnsmasq &>/dev/null
+        # 1. Clean start: Relinquish the systemd journal
+        # This tells journald to stop writing to /var/log/journal and move to /run/log
+        log_info "Relinquishing systemd-journald to volatile /run..."
         journalctl --relinquish-var &>/dev/null
 
-        # 4. THE PROTECTED STRIKE
-        # We identify all PIDs touching /var/log but exclude OUR OWN chain
-        log_info "Surgically reclaiming /var/log (Protecting current session)..."
+        # 2. Prepare the RAM Shadow
+        # We use /run because it's already a guaranteed tmpfs on the Pi
+        local RAM_TMP="/run/onyx_log_ram"
+        mkdir -p "$RAM_TMP"
         
-        # Get the PID tree for the current session to protect it
-        local PROTECTED_PIDS="$$ $PPID $(pgrep -u root bash) $(pgrep onyx)"
-        
-        # Find every process holding /var/log open
-        local BLOCKERS=$(lsof +D /var/log | awk 'NR>1 {print $2}' | sort -u)
-        
-        for PID in $BLOCKERS; do
-            # Only kill if the PID is not in our protected list
-            if [[ ! " $PROTECTED_PIDS " =~ " $PID " ]]; then
-                kill -9 "$PID" 2>/dev/null
-            fi
-        done
-        sleep 1
-
-        # 5. ATTEMPT MOUNT
-        if folder2ram -mountall &>/dev/null; then
-            log_success "Forensic-Zero: Logs successfully moved to RAM."
-        else
-            log_warning "Mountpoint busy. Attempting direct Shadow Mount..."
-            # Final fallback: Force a manual tmpfs mount
-            mount -t tmpfs -o size=128M,nodev,nosuid,noatime tmpfs /var/log
+        # Only mount if not already present
+        if ! mountpoint -q "$RAM_TMP"; then
+            mount -t tmpfs -o size=128M,nodev,nosuid,noatime tmpfs "$RAM_TMP"
         fi
 
-        # 6. Restore infrastructure
-        systemctl start unbound hostapd dnsmasq &>/dev/null
+        # 3. Synchronize Logs
+        # This prevents services from crashing when they can't find their log files
+        log_info "Syncing active logs to RAM..."
+        cp -a /var/log/* "$RAM_TMP/"
+
+        # 4. THE SHADOW STRIKE: Bind Mount
+        # This 'covers' the SD card with the RAM disk without killing existing handles
+        log_info "Shadowing /var/log with RAM disk..."
+        if mount --bind "$RAM_TMP" /var/log; then
+            log_success "Forensic-Zero: Shadow Mount established."
+        else
+            log_error "Shadow Mount failed. System state is inconsistent."
+            return 1
+        fi
+
+        # 5. Flush and Restart high-volume loggers
+        # This forces them to reopen their files on the NEW RAM-disk
+        log_info "Restarting core loggers to engage RAM disk..."
+        systemctl restart unbound hostapd dnsmasq &>/dev/null
+        
+        log_success "Forensic-Zero Active: 128MB RAM Disk shadowing /var/log."
     fi
 }
 
