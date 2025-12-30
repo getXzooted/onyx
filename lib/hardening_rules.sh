@@ -283,44 +283,49 @@ function check_forensic_zero() {
     fi
     return 1
 }
+
 function apply_forensic_zero() {
     if [[ "$1" == "true" ]]; then
         log_step "Applying Official log2ram (Forensic-Zero)..."
 
-        # 1. OFFICIAL TROUBLESHOOTING: Vacuum journal so it fits in RAM
+        # 1. DOCUMENTATION - TROUBLESHOOTING: Vacuum journal
+        # This ensures existing logs don't exceed your RAM disk size on first mount.
         journalctl --vacuum-size=32M &>/dev/null
         
-        # 2. OFFICIAL TROUBLESHOOTING: Limit SystemMaxUse
+        # 2. DOCUMENTATION - TROUBLESHOOTING: Set SystemMaxUse
         if ! grep -q "SystemMaxUse=20M" /etc/systemd/journald.conf; then
             echo "SystemMaxUse=20M" >> /etc/systemd/journald.conf
             systemctl restart systemd-journald &>/dev/null
         fi
 
-        # 3. PASSIVE MANUAL INSTALL
+        # 3. DOCUMENTATION - MANUAL INSTALL
         if [[ ! -f "/usr/local/bin/log2ram" ]]; then
             curl -L https://github.com/azlux/log2ram/archive/master.tar.gz | tar zxf -
             cd log2ram-master
-            # BROAD NEUTER: Deletes any line attempting a live start to prevent logout
+            # NEUTER LIVE START: Ensure the installer doesn't kill your session now.
             sed -i '/systemctl start log2ram/d' install.sh
             ./install.sh &>/dev/null
             cd .. && rm -rf log2ram-master
         fi
 
-        # 4. PERCENTAGE CALCULATION (Using bc as requested)
+        # 4. APEX CALCULATION: 25% of RAM
+        # On your 512MB Pi Zero 2W, this is ~128MB.
         local LOG_PERCENT="0.25"
         local TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
         local CALCULATED_SIZE=$(echo "$TOTAL_RAM * $LOG_PERCENT" | bc | cut -d. -f1)
         
-        # 5. OFFICIAL CUSTOMIZATION: SIZE
-        # Sets the RAM disk size to your calculated percentage
+        # 5. DOCUMENTATION - CUSTOMIZATION
+        # Apply the dynamic size to the official config
         sed -i "s/SIZE=40M/SIZE=${CALCULATED_SIZE}M/" /etc/log2ram.conf
         sed -i 's/MAIL=true/MAIL=false/' /etc/log2ram.conf
         
         # 6. ENFORCE REBOOT
+        # Enable for the next boot, but do not start it now.
         systemctl enable log2ram &>/dev/null
         log_success "Forensic-Zero: ${CALCULATED_SIZE}M configured. REBOOT MANDATORY."
     fi
 }
+
 function check_dark_mode() {
     # Check if the dtparam for LEDs is in the config
     grep -q "dtparam=pwr_led_trigger=none" /boot/firmware/config.txt &>/dev/null && return 0 || return 1
