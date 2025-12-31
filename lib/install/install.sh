@@ -25,7 +25,9 @@ source "$MODULES_DIR/provision/ingest.sh"
 
 # 4. Asset Synchronization & Network Hardening
 log_info "Phase 4: Asset Synchronization & Network Hardening"
+
 $ONYX_ROOT/bin/onyx provision
+$ONYX_ROOT/bin/onyx config
 $ONYX_ROOT/bin/onyx network repair
 
 # 5. We also reboot in case no drag-and-drop happens.
