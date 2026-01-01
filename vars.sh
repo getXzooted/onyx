@@ -24,6 +24,17 @@ export HARDENING_YAML="$CONFIG_DIR/hardening.yml"
 export ONYX_LOG_RAM="/var/log/onyx"
 export ONYX_RESUME_MARKER="/var/opt/onyx_resume_pending"
 
+# --- BOOT PATHS ---
+if [ -d "/boot/firmware" ]; then
+    export BOOT_DIR="/boot/firmware"
+else
+    export BOOT_DIR="/boot"
+fi
+
+export CONFIG_SOURCE="$BOOT_DIR/onyx.yml"
+export WG_SOURCE="$BOOT_DIR/wg0.conf"
+export TARGET_CONFIG="$ONYX_ROOT/config/onyx.yml"
+
 
 # --- COLORS ---
 export RED='\033[0;31m'
