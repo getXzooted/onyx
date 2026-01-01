@@ -67,6 +67,19 @@ COMMAND="$1"
 
 case "$COMMAND" in
 
+    boot)
+        # Check if the boot script exists
+        BOOT_SCRIPT="$ONYX_ROOT/lib/boot/boot.sh"
+        
+        if [ -f "$BOOT_SCRIPT" ]; then
+            source "$BOOT_SCRIPT"
+        else
+            log_error "Boot module not found at $BOOT_SCRIPT"
+            log_info "Please ensure lib/boot/boot.sh exists."
+        fi
+        
+        ;;
+
     install)
         # Check if the installation script exists
         STATUS_SCRIPT="$ONYX_ROOT/lib/install/install.sh"
