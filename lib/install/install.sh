@@ -17,6 +17,8 @@ source "$ONYX_ROOT/lib/install/dependencies.sh"
 #source "$MODULES_DIR/system/resume.sh"
 #system_setup_resume "provision"
 #system_setup_resume "config"
+log_info "Phase 2: Bootstrap Controller Service"
+source "$ONYX_ROOT/lib/install/bootstrap.sh"
 
 # 3. Auto-Provisioning Service (The USB Watcher)
 log_info "Phase 3: Auto-Provisioning Service"
