@@ -150,7 +150,7 @@ function provision_ingest() {
         echo heartbeat > /sys/class/leds/ACT/trigger
 
         log_info "Rebooting system..."
-        reboot
+        #reboot
     else
         log_error "Provisioning failed."
         # Error Blink (5 Slow)
