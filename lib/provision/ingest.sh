@@ -1,7 +1,6 @@
 #!/bin/bash
-# MODULE: Provisioning > Ingest
-# Checks boot partition for 'onyx.yml' OR 'wg0.conf'.
-# Supports both Advanced (YAML) and Easy (WireGuard file) modes.
+# LIB: Provision > Ingest
+# Checks boot partition for 'onyx.yml' 'onyx_update.yml' OR 'wg0.conf'.
 
 function provision_ingest() {
 
