@@ -62,7 +62,7 @@ source "$MODULES_DIR/system/tuning.sh"
 system_secure_uplink
     
 # 6. Cleanup (Delete the resume service)
-system_cleanup_resume
+#system_cleanup_resume
     
 log_success "ONYX INSTALLATION COMPLETE."
 log_info "Run 'sudo onyx monitor' to view dashboard."

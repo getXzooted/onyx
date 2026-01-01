@@ -16,11 +16,11 @@ source "$ONYX_ROOT/lib/install/dependencies.sh"
 log_info "Phase 2: Scheduling Reboot & Resume"
 source "$MODULES_DIR/system/resume.sh"
 #system_setup_resume "provision"
-system_setup_resume "config"
+#system_setup_resume "config"
 
 # 3. Auto-Provisioning Service (The USB Watcher)
 log_info "Phase 3: Auto-Provisioning Service"
-source "$MODULES_DIR/provision/install_service.sh"
+#source "$MODULES_DIR/provision/install_service.sh"
 source "$MODULES_DIR/provision/ingest.sh"
 
 # 4. Asset Synchronization & Network Hardening
