@@ -2,10 +2,12 @@
 # Onyx Hardening Configuration File
 
 hardening:
+  persona: "apple"             # Options: 'apple', 'windows', 'linux'
   system:
     # --- RESOURCE & PRIVACY FOUNDATIONS ---
     use_zram: true             # Toggles zram to active swap in RAM
     forensic_zero: true        # Toggles folder2ram for /var/log
+    browser_scrubbing: true    # Toggles Browser Identity Scrubber (Privoxy)
     dark_mode: true            # Toggles Physical Dark Mode (LED Stealth)
     bluetooth_locked: true     # Toggles BT hardware state
     mac_stealth: false         # Toggles wlan0 MAC randomization

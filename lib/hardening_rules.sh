@@ -740,3 +740,77 @@ function apply_telemetry_blackout() {
         done
     fi
 }
+
+
+# --- BROWSER IDENTITY SCRUBBER (Privoxy) ---
+
+function check_browser_scrubbing() {
+    # 1. Audit: Is the service active?
+    if ! systemctl is-active privoxy &>/dev/null; then
+        return 1
+    fi
+
+    # 2. Audit: Is the transparent redirection active in iptables?
+    # Redirects Port 80 (HTTP) to Privoxy's port 8118
+    if ! iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null; then
+        return 1
+    fi
+
+    return 0
+}
+
+function apply_browser_scrubbing() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Engaging Browser Identity Scrubber (Privoxy)..."
+
+        # 1. Install Privoxy if missing
+        if ! command -v privoxy &>/dev/null; then
+            apt-get install -y -qq privoxy &>/dev/null
+        fi
+
+        # 2. Fetch the Unified Persona from YAML
+        local PERSONA=$(yq e '.hardening.persona' "$HARDENING_YAML")
+        
+        # 3. Define User-Agents based on Persona
+        case "$PERSONA" in
+            apple)   
+                UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+                ;;
+            windows) 
+                UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ;;
+            *)       
+                UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                ;;
+        esac
+
+        # 4. Generate the 'Sovereign' Action File
+        # This kills Referers and Client-Hints seen in your screenshot
+        cat <<EOF > /etc/privoxy/user.action
+{ +hide-referrer{forge} \
+  +hide-user-agent{$UA} \
+  +hide-from-header{block} \
+  +set-image-blocker{blank} \
+}
+/ # Apply to all outgoing traffic
+EOF
+
+        # 5. Enable Transparent Proxy Mode in main config
+        # We tell Privoxy to listen on the gateway IP
+        sed -i 's/listen-address  127.0.0.1:8118/listen-address  0.0.0.0:8118/' /etc/privoxy/config
+        # Accept intercepted (transparent) connections
+        if ! grep -q "accept-intercepted-requests 1" /etc/privoxy/config; then
+            echo "accept-intercepted-requests 1" >> /etc/privoxy/config
+        fi
+
+        systemctl restart privoxy
+
+        # 6. INJECT FIREWALL REDIRECT
+        # This forces all hotspot clients (uap0) through the scrubber
+        if ! iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null; then
+            iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
+        fi
+        
+        log_success "Browser Stealth: Now appearing as $PERSONA ($UA)."
+    fi
+}
