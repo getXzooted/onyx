@@ -22,7 +22,6 @@ CORE_DIR="$ONYX_ROOT/core"
 MODULES_DIR="$ONYX_ROOT/modules"
 
 source "$ONYX_ROOT/env.sh"
-source "$ONYX_ROOT/vars.sh"
 
 # 2. LOAD DEPENDENCIES
 # Logger is required for all scripts
