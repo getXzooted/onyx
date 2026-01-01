@@ -150,6 +150,7 @@ function provision_ingest() {
         echo heartbeat > /sys/class/leds/ACT/trigger
 
         log_info "Rebooting system..."
+        load_config
         #reboot
     else
         log_error "Provisioning failed."
