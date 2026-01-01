@@ -5,8 +5,15 @@
 check_root
 check_env
 
-mkdir -p /etc/onyx/firewall/
-mkdir -p /etc/unbound/unbound.conf.d/
+if [ ! -d "/etc/onyx/firewall/" ]; then
+    log_info "Creating Firewall Directory..."
+    mkdir -p /etc/onyx/firewall/
+fi
+
+if [ ! -d "/etc/unbound/unbound.conf.d/" ]; then
+    log_info "Creating Unbound Config Directory..."
+    mkdir -p /etc/unbound/unbound.conf.d/
+fi
 
 log_header "--- PROVISIONING SYSTEM ---"
             
