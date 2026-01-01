@@ -52,6 +52,8 @@ function provision_ingest() {
 
     # --- LOAD NEW CONFIG ---
     load_config
+
+    return 1
 }
 
 provision_ingest
