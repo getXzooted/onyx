@@ -16,8 +16,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/onyx network repair
-StandardOutput=inherit
-StandardError=inherit
+StandardOutput=journal+console
+StandardError=journal+console
 User=root
 RemainAfterExit=yes
 
