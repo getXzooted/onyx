@@ -13,8 +13,8 @@ source "$ONYX_ROOT/lib/install/dependencies.sh"
 
 
 # 2. Schedule Reboot & Resume
-log_info "Phase 2: Scheduling Reboot & Resume"
-source "$MODULES_DIR/system/resume.sh"
+#log_info "Phase 2: Scheduling Reboot & Resume"
+#source "$MODULES_DIR/system/resume.sh"
 #system_setup_resume "provision"
 #system_setup_resume "config"
 
