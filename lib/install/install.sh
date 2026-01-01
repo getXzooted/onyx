@@ -11,24 +11,33 @@ log_header "--- STARTING INSTALLATION ---"
 log_info "Phase 1: System Dependencies"
 source "$ONYX_ROOT/lib/install/dependencies.sh"
 
-
 # 2. Install Bootstrap Service
 log_info "Phase 2: Bootstrap Controller Service"
 source "$ONYX_ROOT/lib/install/bootstrap.sh"
 
-# 3. Auto-Provisioning Service (The USB Watcher)
+# 3. Auto-Provisioning Service (The Boot Watcher)
 log_info "Phase 3: Auto-Provisioning Service"
-#source "$MODULES_DIR/provision/ingest.sh"
 source "$ONYX_ROOT/lib/provision/ingest.sh"
 
 # 4. Asset Synchronization & Network Hardening
-log_info "Phase 4: Asset Synchronization & Network Hardening"
+log_info "Phase 4: Setup Assets & Network Hardening"
 
+log_step "Provisioning Network"
 $ONYX_ROOT/bin/onyx provision
+
+log_step "Configuring Network"
 $ONYX_ROOT/bin/onyx config
+
+log_step "Hardening Network"
 $ONYX_ROOT/bin/onyx network repair
 
 # 5. We also reboot in case no drag-and-drop happens.
 log_info "System will reboot now to continue installation..."
-sleep 3
+
+echo "3"
+sleep 1
+echo "2"
+sleep 1
+echo "1"
+sleep 1
 reboot
