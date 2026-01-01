@@ -15,7 +15,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/onyx network repair
+ExecStart=/usr/local/bin/onyx boot
 StandardOutput=journal+console
 StandardError=journal+console
 User=root
@@ -27,7 +27,7 @@ EOF
 
     systemctl daemon-reload
     systemctl enable onyx.service
-    log_success "Controller armed. Initial entry: 'onyx network repair'"
+    log_success "Controller armed. Initial entry: 'onyx boot'"
 }
 
 bootstrap
