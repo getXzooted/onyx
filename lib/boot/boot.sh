@@ -30,3 +30,19 @@ if [[ "$(zramctl --noheadings --output ALGORITHM /dev/zram0 2>/dev/null)" != "lz
     sudo mkswap /dev/zram0 && sudo swapon /dev/zram0 -p 100
     log_success "Memory Guard: Hardware Locked ($ZRAM_SIZE @ lz4)."
 fi
+
+log_step "Checking for new configuration files on boot partition..."
+source "$ONYX_ROOT/lib/provision/ingest.sh"
+
+if [ $? -eq 1]; then
+    log_info "New configuration detected. Provisioning and Configuring now..."
+
+    log_step "Provisioning Network"
+    $ONYX_ROOT/bin/onyx provision
+
+    log_step "Configuring Network"
+    $ONYX_ROOT/bin/onyx config
+fi
+
+log_step "Hardening Network"
+$ONYX_ROOT/bin/onyx network repair
