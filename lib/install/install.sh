@@ -18,7 +18,8 @@ source "$ONYX_ROOT/lib/install/bootstrap.sh"
 
 # 3. Auto-Provisioning Service (The USB Watcher)
 log_info "Phase 3: Auto-Provisioning Service"
-source "$MODULES_DIR/provision/ingest.sh"
+#source "$MODULES_DIR/provision/ingest.sh"
+source "$ONYX_ROOT/lib/provision/ingest.sh"
 
 # 4. Asset Synchronization & Network Hardening
 log_info "Phase 4: Asset Synchronization & Network Hardening"
