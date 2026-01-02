@@ -744,36 +744,31 @@ function apply_telemetry_blackout() {
 
 
 
-   
-# --- THE SOVEREIGN IDENTITY SCRUBBER (MITM + NGINX) ---
-
+# --- IDENTITY SCRUBBER: AUDIT WORKER ---
 function check_browser_scrubbing() {
-    # 1. Audit Services
-    systemctl is-active --quiet nginx || return 1
+    # 1. Check Services
     systemctl is-active --quiet privoxy || return 1
+    systemctl is-active --quiet nginx || return 1
 
-    # 2. Audit CA Certificate existence
+    # 2. Check Certificates
     [[ ! -f "/etc/privoxy/certs/onyx-ca.crt" ]] && return 1
 
-    # 3. Audit Firewall (Port 80 and 443 redirection)
-    iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 &>/dev/null || return 1
-    iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 &>/dev/null || return 1
+    # 3. Check Firewall Redirection (Nat Table)
+    # If the 443 redirect is missing, the audit is RED
+    iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 2>/dev/null || return 1
 
     return 0
 }
 
+# --- IDENTITY SCRUBBER: APPLY WORKER ---
 function apply_browser_scrubbing() {
     if [[ "$1" == "true" ]]; then
-        log_step "Engaging Browser Scrubbing (MITM Persona Sync)..."
+        log_step "Engaging Sovereign Identity Scrubber (MITM)..."
 
-        # 1. Install Privoxy + NGINX if missing
-        if ! command -v privoxy &>/dev/null; then
-            apt-get install -y -qq privoxy &>/dev/null
-        fi
-
-        if ! command -v nginx &>/dev/null; then
-            apt-get install -y -qq nginx &>/dev/null
-        fi
+        # 1. DEPENDENCIES & DIRECTORIES
+        for pkg in privoxy nginx openssl; do
+            command -v $pkg &>/dev/null || apt-get install -y -qq $pkg &>/dev/null
+        done
 
         if [[ ! -d "/etc/privoxy/certs/" ]]; then
             mkdir -p /etc/privoxy/certs/
@@ -783,33 +778,31 @@ function apply_browser_scrubbing() {
             mkdir -p "/var/www/onyx/"
         fi
 
-        # 1. GENERATE SOVEREIGN CA (If missing)
+        # 2. SOVEREIGN CERTIFICATE GENERATION
         if [[ ! -f "/etc/privoxy/certs/onyx-ca.crt" ]]; then
             log_info "Generating Sovereign Root CA..."
             openssl req -new -newkey rsa:2048 -sha256 -days 3650 -nodes -x509 \
                 -keyout /etc/privoxy/certs/onyx-ca.key \
                 -out /etc/privoxy/certs/onyx-ca.crt \
                 -subj "/CN=Onyx Sovereign Root CA" &>/dev/null
+            # Move to web root for download
             cp /etc/privoxy/certs/onyx-ca.crt /var/www/onyx/ca.crt
         fi
 
-        # 2. CONFIGURE PRIVOXY (Persona Mapping)
+        # 3. PRIVOXY PERSONA SYNC (MAC/TTL/UA Alignment)
         local PERSONA=$(yq e '.hardening.persona' "$HARDENING_YAML")
+        local UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         [[ "$PERSONA" == "apple" ]] && UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
         [[ "$PERSONA" == "windows" ]] && UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         [[ "$PERSONA" == "linux" ]] && UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        # Update Privoxy Config for HTTPS Inspection
+
+
+        # Configure Main Privoxy Engine
         cat <<EOF > /etc/privoxy/config
 confdir /etc/privoxy
 logdir /var/log/privoxy
 filterfile default.filter
-user-manual /usr/share/doc/privoxy/user-manual
 listen-address 0.0.0.0:8118
-toggle 1
-enable-remote-toggle 0
-enable-edit-actions 0
-enable-remote-http-toggle 0
-buffer-limit 4096
 accept-intercepted-requests 1
 ca-directory /etc/privoxy/certs
 ca-cert-file onyx-ca.crt
@@ -819,7 +812,7 @@ trusted-cas-file /etc/ssl/certs/ca-certificates.crt
 https-inspection 1
 EOF
 
-        # Apply the Identity Wash (Scrubbing Referers and Headers)
+        # Configure Scrubbing Rules (Referer, Headers, MITM)
         cat <<EOF > /etc/privoxy/user.action
 {+https-inspection}
 /
@@ -828,25 +821,22 @@ EOF
 EOF
         systemctl restart privoxy
 
-        # 3. CONFIGURE NGINX (Welcome Page & Certificate Host)
+        # 4. NGINX WELCOME PAGE (Onboarding Portal)
         cat <<EOF > /etc/nginx/sites-available/default
 server {
     listen 80 default_server;
     root /var/www/onyx;
     index index.html;
+    # Required for Android/Apple detection to trigger the portal
+    location /generate_204 { return 302 http://onyx.gateway; }
     location /ca.crt { default_type application/x-x509-ca-cert; }
 }
 EOF
 
-# --- Generate Sovereign Welcome Page ---
-        log_info "Generating Sovereign Welcome Page for $PERSONA Persona..."
-        
-        # Pull Persona Details for Display
         local DISPLAY_PERSONA="Unknown"
         [[ "$PERSONA" == "apple" ]] && DISPLAY_PERSONA="Apple / Safari"
         [[ "$PERSONA" == "windows" ]] && DISPLAY_PERSONA="Windows / Edge"
-
-        touch /var/www/onyx/index.html
+        [[ "$PERSONA" == "linux" ]] && DISPLAY_PERSONA="Linux / Chrome"
 
         cat <<EOF > /var/www/onyx/index.html
 <!DOCTYPE html>
@@ -863,43 +853,45 @@ EOF
         .status-badge { background: #00ff0022; color: #00ff00; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; margin-bottom: 1.5rem; }
         p { line-height: 1.6; color: #b0b0b0; }
         .persona-tag { color: var(--onyx-blue); font-weight: bold; }
-        .btn { display: block; background: var(--onyx-blue); color: white; padding: 14px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 2rem; transition: background 0.2s; }
+        .btn { display: block; background: var(--onyx-blue); color: white; padding: 14px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 2rem; transition: background 0.2s; text-align: center; }
         .btn:hover { background: #0056b3; }
-        .footer { margin-top: 2rem; font-size: 0.75rem; color: #555; }
+        .footer { margin-top: 2rem; font-size: 0.75rem; color: #555; text-align: center; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Onyx Sovereign</h1>
         <div class="status-badge">● Identity Masking Active</div>
-        
         <p>This network is currently masking your traffic using the <span class="persona-tag">$DISPLAY_PERSONA</span> Persona.</p>
-        
         <p>To enable <strong>Day 1 Stealth</strong> (Full HTTPS Scrubber), you must trust the gateway certificate on this device.</p>
-        
         <a href="/ca.crt" class="btn">Download Sovereign Certificate</a>
-
-        <div class="footer">
-            Sovereign Gateway v2.1.0 | Forensic-Zero | ZRAM-Optimized
-        </div>
+        <div class="footer">Sovereign Gateway v2.1.0 | Forensic-Zero | ZRAM-Optimized</div>
     </div>
 </body>
 </html>
 EOF
-
         systemctl restart nginx
 
-        # 4. FIREWALL: IOT MAC BYPASS & REDIRECTION
-        # This addresses your IoT hurdle by exempting specific MACs from the scrubber
-        log_info "Applying Firewall Scrubber Rules..."
-        
-        # Pull the bypass list from YAML (e.g. hardening.iot_bypass: ["aa:bb:cc...", "11:22..."])
+        # 5. FIREWALL: THE MULTI-TIER STACK
+        log_info "Rebuilding Scrubber Firewall (Strict Order)..."
+
+        # 5a. Clean current Scrubber Rules (prevents duplicates)
+        iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null
+        iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 2>/dev/null
+
+        # 5b. CONNECTIVITY BYPASS (Allows phone to stay connected)
+        # We use -I to insert at the top of the chain
+        iptables -t nat -I PREROUTING -i uap0 -d connectivitycheck.gstatic.com -j ACCEPT
+        iptables -t nat -I PREROUTING -i uap0 -d apple.com -j ACCEPT
+
+        # 5c. IOT MAC BYPASS
         local BYPASS_MACS=$(yq e '.hardening.iot_bypass[]' "$HARDENING_YAML" 2>/dev/null)
         for mac in $BYPASS_MACS; do
-            iptables -t nat -A PREROUTING -i uap0 -m mac --mac-source "$mac" -j ACCEPT
+            iptables -t nat -I PREROUTING -i uap0 -m mac --mac-source "$mac" -j ACCEPT
         done
 
-        # Redirect the rest of the traffic to the Scrubber
+        # 5d. ACTIVE REDIRECTION (Port 80 and 443)
+        # We use -A to append, ensuring they are evaluated AFTER the bypasses
         iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
         iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118
         
