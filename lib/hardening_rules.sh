@@ -429,19 +429,19 @@ function check_safety_net() {
 }
 
 function apply_safety_net() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Repairing Safety Net (Firewall Sync)..."
-        
-        # 1. LOAD THE GENERATOR: Ensure the module is available
-        source "$ONYX_ROOT/modules/network/safety_net.sh"
-        
-        # 2. EXECUTE: Now that the file is guaranteed to exist, run it to restore internet
-        if [ -x "/usr/local/bin/safety-net.sh" ]; then
-            /usr/local/bin/safety-net.sh
-        else
-            log_error "Safety Net repair failed: Script could not be built."
-        fi
-    fi
+    #if [[ "$1" == "true" ]]; then
+    #    log_step "Repairing Safety Net (Firewall Sync)..."
+    #    
+    #    # 1. LOAD THE GENERATOR: Ensure the module is available
+    #    source "$ONYX_ROOT/modules/network/safety_net.sh"
+    #    
+    #    # 2. EXECUTE: Now that the file is guaranteed to exist, run it to restore internet
+    #    if [ -x "/usr/local/bin/safety-net.sh" ]; then
+    #        /usr/local/bin/safety-net.sh
+    #    else
+    #        log_error "Safety Net repair failed: Script could not be built."
+    #    fi
+    #fi
 }
 
 function check_ghost_host() {
