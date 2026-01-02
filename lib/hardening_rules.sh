@@ -746,19 +746,17 @@ function apply_telemetry_blackout() {
 
 # --- IDENTITY SCRUBBER: AUDIT WORKER ---
 function check_browser_scrubbing() {
-    # 1. Service Check (Can be done as user)
-    systemctl is-active --quiet privoxy || return 1
-    systemctl is-active --quiet nginx || return 1
-
-    # 2. Firewall Check (Must be able to read NAT table)
-    # We use sudo here to ensure the check actually sees the rules
-    local REDIRECT_COUNT=$(sudo iptables -t nat -L PREROUTING -n 2>/dev/null | grep -c "8118")
+    # Is the engine running?
+    ! systemctl is-active --quiet privoxy && return 1
+    ! systemctl is-active --quiet nginx && return 1
     
-    # We expect exactly 2 rules (80 and 443)
-    if [[ $REDIRECT_COUNT -lt 2 ]]; then
-        return 1
-    fi
-
+    # Is the engine listening globally? (Ensures traffic can reach Privoxy)
+    ! sudo netstat -tulpn | grep -q "0.0.0.0:8118" && return 1
+    
+    # Are the redirects present in the NAT table?
+    local RULES=$(sudo iptables -t nat -S PREROUTING 2>/dev/null | grep -c "8118")
+    [[ $RULES -lt 2 ]] && return 1
+    
     return 0
 }
 
@@ -877,26 +875,25 @@ EOF
         # 5. FIREWALL: THE MULTI-TIER STACK
         log_info "Rebuilding Scrubber Firewall (Strict Order)..."
 
-        # 5a. Clean current Scrubber Rules (prevents duplicates)
-        iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null
-        iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 2>/dev/null
+        # A. Clear existing to prevent "Rule already exists" errors
+        # We use || true to ensure the script continues even if rules are missing
+        sudo iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null || true
+        sudo iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 2>/dev/null || true
 
-        # 5b. CONNECTIVITY BYPASS (Allows phone to stay connected)
-        # We use -I to insert at the top of the chain
-        iptables -t nat -I PREROUTING -i uap0 -d connectivitycheck.gstatic.com -j ACCEPT
-        iptables -t nat -I PREROUTING -i uap0 -d apple.com -j ACCEPT
+        # B. Connectivity Bypass (Ensures Hotspot handshake works)
+        sudo iptables -t nat -I PREROUTING -i uap0 -d connectivitycheck.gstatic.com -j ACCEPT
+        sudo iptables -t nat -I PREROUTING -i uap0 -d apple.com -j ACCEPT
 
-        # 5c. IOT MAC BYPASS
+        # C. IoT Bypass (Insert at the TOP)
         local BYPASS_MACS=$(yq e '.hardening.iot_bypass[]' "$HARDENING_YAML" 2>/dev/null)
         for mac in $BYPASS_MACS; do
-            iptables -t nat -I PREROUTING -i uap0 -m mac --mac-source "$mac" -j ACCEPT
+            sudo iptables -t nat -I PREROUTING -i uap0 -m mac --mac-source "$mac" -j ACCEPT
         done
 
-        # 5d. ACTIVE REDIRECTION (Port 80 and 443)
-        # We use -A to append, ensuring they are evaluated AFTER the bypasses
-        iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
-        iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118
+        # D. The Main Redirection (Append to the end of the chain)
+        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
+        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118
         
-        log_success "Identity Scrubber Active. Persona: $PERSONA."
+        log_success "Identity Scrubber Active."
     fi
 }
