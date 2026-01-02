@@ -24,6 +24,9 @@ export HARDENING_YAML="$CONFIG_DIR/hardening.yml"
 export ONYX_LOG_RAM="/var/log/onyx"
 export ONYX_RESUME_MARKER="/var/opt/onyx_resume_pending"
 
+# --- TEMPLATE PATHS ---
+export ONYX_UNBOUND_TEMPLATE="$CONFIG_DIR/templates/unbound/unbound.conf"
+
 # --- BOOT PATHS ---
 if [ -d "/boot/firmware" ]; then
     export BOOT_DIR="/boot/firmware"
