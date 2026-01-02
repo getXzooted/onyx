@@ -747,7 +747,7 @@ function apply_telemetry_blackout() {
    
 # --- THE SOVEREIGN IDENTITY SCRUBBER (MITM + NGINX) ---
 
-function check_identity_scrubber() {
+function check_browser_scrubbing() {
     # 1. Audit Services
     systemctl is-active --quiet nginx || return 1
     systemctl is-active --quiet privoxy || return 1
@@ -762,9 +762,9 @@ function check_identity_scrubber() {
     return 0
 }
 
-function apply_identity_scrubber() {
+function apply_browser_scrubbing() {
     if [[ "$1" == "true" ]]; then
-        log_step "Engaging Identity Scrubber (MITM Persona Sync)..."
+        log_step "Engaging Browser Scrubbing (MITM Persona Sync)..."
 
         # 1. Install Privoxy + NGINX if missing
         if ! command -v privoxy &>/dev/null; then
