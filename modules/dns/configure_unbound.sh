@@ -28,7 +28,7 @@ function dns_configure_unbound() {
         fi
         
         # Add the root-hints pointer to the config
-        HINTS_CONF="root-hints: \"$HINTS_FILE\""
+        HINTS_CONF="    root-hints: \"$HINTS_FILE\""
     else
         log_step "Mode: FORWARDING (External DNS)"
         HINTS_CONF=""
