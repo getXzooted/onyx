@@ -884,6 +884,7 @@ EOF
         # Explicitly tells the Safety Net to allow scrubbed traffic from the hotspot (uap0) 
         # to reach the VPN (wg0). This fixes the "No Internet" warning.
         sudo iptables -I FORWARD -i uap0 -o wg0 -j ACCEPT
+        sudo iptables -t mangle -I POSTROUTING -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
         # A. Clear existing to prevent "Rule already exists" errors
         # We use || true to ensure the script continues even if rules are missing
@@ -894,7 +895,7 @@ EOF
         for range in 8.8.8.8 8.8.4.4 216.58.0.0/16 172.217.0.0/16; do
             sudo iptables -t nat -I PREROUTING -i uap0 -d "$range" -j ACCEPT
         done
-        
+
         # C. IoT Bypass (Insert at the TOP)
         local BYPASS_MACS=$(yq e '.hardening.iot_bypass[]' "$HARDENING_YAML" 2>/dev/null)
         for mac in $BYPASS_MACS; do
