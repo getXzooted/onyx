@@ -429,7 +429,7 @@ function check_safety_net() {
 }
 
 function apply_safety_net() {
-    #if [[ "$1" == "true" ]]; then
+    if [[ "$1" == "true" ]]; then
     #    log_step "Repairing Safety Net (Firewall Sync)..."
     #    
     #    # 1. LOAD THE GENERATOR: Ensure the module is available
@@ -441,7 +441,8 @@ function apply_safety_net() {
     #    else
     #        log_error "Safety Net repair failed: Script could not be built."
     #    fi
-    #fi
+    return 0
+    fi
 }
 
 function check_ghost_host() {
