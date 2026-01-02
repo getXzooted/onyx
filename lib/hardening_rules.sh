@@ -907,5 +907,10 @@ EOF
         sudo iptables -t nat -I PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 80 -j REDIRECT --to-port 8118
         sudo iptables -t nat -I PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 443 -j REDIRECT --to-port 8118
         log_success "Identity Scrubber Active."
+
+        # B. Connectivity Bypass (Ensures Hotspot handshake works)
+        for range in 8.8.8.8 8.8.4.4 216.58.0.0/16 172.217.0.0/16; do
+            sudo iptables -t nat -I PREROUTING -i uap0 -d "$range" -j ACCEPT
+        done
     fi
 }
