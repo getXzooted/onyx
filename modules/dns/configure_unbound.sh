@@ -2,10 +2,8 @@
 # MODULE: DNS > Unbound Configuration
 # Installs Unbound and applies Pi Zero resource optimizations.
 
-if [ -z "$ONYX_ROOT" ]; then
-    echo "Error: This module must be run via the Onyx CLI."
-    exit 1
-fi
+check_root
+check_env
 
 function dns_configure_unbound() {
     # 1. Check Config Variable
@@ -30,7 +28,7 @@ function dns_configure_unbound() {
         fi
         
         # Add the root-hints pointer to the config
-        HINTS_CONF="    root-hints: \"$HINTS_FILE\""
+        HINTS_CONF="root-hints: \"$HINTS_FILE\""
     else
         log_step "Mode: FORWARDING (External DNS)"
         HINTS_CONF=""
@@ -43,35 +41,7 @@ function dns_configure_unbound() {
     mkdir -p /etc/unbound/unbound.conf.d
     
     cat <<EOF > "$CONFIG_FILE"
-server:
-    # Listening Info
-    verbosity: 0
-    interface: 127.0.0.1
-    port: 5335
-    $HINTS_CONF
-    do-ip4: yes
-    do-udp: yes
-    do-tcp: yes
-    
-    # Privacy & Security
-    do-ip6: no
-    access-control: 0.0.0.0/0 refuse
-    access-control: 127.0.0.0/8 allow
-    harden-glue: yes
-    harden-dnssec-stripped: yes
-    use-caps-for-id: no
-    edns-buffer-size: 1232
-    prefetch: yes
-    
-    # Pi Zero Resource Limits (Low RAM)
-    num-threads: 1
-    msg-cache-slabs: 2
-    rrset-cache-slabs: 2
-    infra-cache-slabs: 2
-    key-cache-slabs: 2
-    rrset-cache-size: 50m
-    msg-cache-size: 25m
-    so-rcvbuf: 1m
+$(<"$ONYX_UNBOUND_TEMPLATE")
 EOF
 
     # 4. Install Package (Idempotent)
