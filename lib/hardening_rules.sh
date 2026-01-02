@@ -779,7 +779,7 @@ function apply_browser_scrubbing() {
             mkdir -p /etc/privoxy/certs/
         fi
 
-        if [[ ! -d "/var/www/onyx/"]]; then
+        if [[ ! -d "/var/www/onyx/" ]]; then
             mkdir -p "/var/www/onyx/"
         fi
 
