@@ -36,7 +36,7 @@ function dns_configure_unbound() {
 
     # 3. Apply Pi Zero Optimization Config (Strict Port from V1)
     CONFIG_FILE="/etc/unbound/unbound.conf.d/pi-zero.conf"
-    log_step "Writing optimized config to $CONFIG_FILE..."
+    log_step "Writing optimized config to $CONFIG_FILE from $ONYX_UNBOUND_TEMPLATE..."
 
     mkdir -p /etc/unbound/unbound.conf.d
 
@@ -44,10 +44,8 @@ function dns_configure_unbound() {
     # nested inside a subshell result in a heredoc.
     # The '|' delimiter is used because $HINTS_CONF contains slashes (/).
     sed "s|\${HINTS_CONF}|$HINTS_CONF|g" "$ONYX_UNBOUND_TEMPLATE" > "$CONFIG_FILE"
-    
-    cat <<EOF > "$CONFIG_FILE"
-$(<"$ONYX_UNBOUND_TEMPLATE")
-EOF
+    chown unbound:unbound "$CONFIG_FILE"
+    chmod 644 "$CONFIG_FILE"
 
     # 4. Install Package (Idempotent)
     if ! command -v unbound &> /dev/null; then
