@@ -39,6 +39,11 @@ function dns_configure_unbound() {
     log_step "Writing optimized config to $CONFIG_FILE..."
 
     mkdir -p /etc/unbound/unbound.conf.d
+
+    # We use sed to replace the placeholder because Bash doesn't expand variables 
+    # nested inside a subshell result in a heredoc.
+    # The '|' delimiter is used because $HINTS_CONF contains slashes (/).
+    sed "s|\${HINTS_CONF}|$HINTS_CONF|g" "$ONYX_UNBOUND_TEMPLATE" > "$CONFIG_FILE"
     
     cat <<EOF > "$CONFIG_FILE"
 $(<"$ONYX_UNBOUND_TEMPLATE")
