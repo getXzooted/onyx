@@ -891,9 +891,10 @@ EOF
         sudo iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 2>/dev/null || true
 
         # B. Connectivity Bypass (Ensures Hotspot handshake works)
-        sudo iptables -t nat -I PREROUTING -i uap0 -d connectivitycheck.gstatic.com -j ACCEPT
-        sudo iptables -t nat -I PREROUTING -i uap0 -d apple.com -j ACCEPT
-
+        for range in 8.8.8.8 8.8.4.4 216.58.0.0/16 172.217.0.0/16; do
+            sudo iptables -t nat -I PREROUTING -i uap0 -d "$range" -j ACCEPT
+        done
+        
         # C. IoT Bypass (Insert at the TOP)
         local BYPASS_MACS=$(yq e '.hardening.iot_bypass[]' "$HARDENING_YAML" 2>/dev/null)
         for mac in $BYPASS_MACS; do
