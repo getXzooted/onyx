@@ -838,6 +838,8 @@ EOF
         [[ "$PERSONA" == "apple" ]] && DISPLAY_PERSONA="Apple / Safari"
         [[ "$PERSONA" == "windows" ]] && DISPLAY_PERSONA="Windows / Edge"
 
+        touch /var/www/onyx/index.html
+
         cat <<EOF > /var/www/onyx/index.html
 <!DOCTYPE html>
 <html lang="en">
