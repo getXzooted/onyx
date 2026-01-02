@@ -875,6 +875,15 @@ EOF
         # 5. FIREWALL: THE MULTI-TIER STACK
         log_info "Rebuilding Scrubber Firewall (Strict Order)..."
 
+        # A. BLOCK QUIC LEAKS (UDP 443)
+        # Force stop using UDP and use TCP Scrubber instead.
+        sudo iptables -I FORWARD -p udp --dport 443 -j REJECT --reject-with icmp-port-unreachable
+
+        # B. ALLOW HOTSPOT FORWARDING
+        # Explicitly tells the Safety Net to allow scrubbed traffic from the hotspot (uap0) 
+        # to reach the VPN (wg0). This fixes the "No Internet" warning.
+        sudo iptables -I FORWARD -i uap0 -o wg0 -j ACCEPT
+
         # A. Clear existing to prevent "Rule already exists" errors
         # We use || true to ensure the script continues even if rules are missing
         sudo iptables -t nat -D PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null || true
