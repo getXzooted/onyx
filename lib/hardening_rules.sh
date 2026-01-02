@@ -775,6 +775,14 @@ function apply_browser_scrubbing() {
             apt-get install -y -qq nginx &>/dev/null
         fi
 
+        if [[ ! -d "/etc/privoxy/certs/" ]]; then
+            mkdir -p /etc/privoxy/certs/
+        fi
+
+        if [[ ! -d "/var/www/onyx/"]]; then
+            mkdir -p "/var/www/onyx/"
+        fi
+
         # 1. GENERATE SOVEREIGN CA (If missing)
         if [[ ! -f "/etc/privoxy/certs/onyx-ca.crt" ]]; then
             log_info "Generating Sovereign Root CA..."
