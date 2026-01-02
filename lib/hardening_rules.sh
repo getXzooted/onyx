@@ -904,8 +904,8 @@ EOF
 
         # D. The Main Redirection (With local exclusion)
         # ! -d 10.3.141.1 ensures the phone can reach the Welcome Page on the Pi
-        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 80 -j REDIRECT --to-port 8118
-        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 443 -j REDIRECT --to-port 8118
+        sudo iptables -t nat -I PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 80 -j REDIRECT --to-port 8118
+        sudo iptables -t nat -I PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 443 -j REDIRECT --to-port 8118
         log_success "Identity Scrubber Active."
     fi
 }
