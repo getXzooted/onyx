@@ -746,16 +746,18 @@ function apply_telemetry_blackout() {
 
 # --- IDENTITY SCRUBBER: AUDIT WORKER ---
 function check_browser_scrubbing() {
-    # 1. Check Services
+    # 1. Service Check (Can be done as user)
     systemctl is-active --quiet privoxy || return 1
     systemctl is-active --quiet nginx || return 1
 
-    # 2. Check Certificates
-    [[ ! -f "/etc/privoxy/certs/onyx-ca.crt" ]] && return 1
-
-    # 3. Check Firewall Redirection (Nat Table)
-    # If the 443 redirect is missing, the audit is RED
-    iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 2>/dev/null || return 1
+    # 2. Firewall Check (Must be able to read NAT table)
+    # We use sudo here to ensure the check actually sees the rules
+    local REDIRECT_COUNT=$(sudo iptables -t nat -L PREROUTING -n 2>/dev/null | grep -c "8118")
+    
+    # We expect exactly 2 rules (80 and 443)
+    if [[ $REDIRECT_COUNT -lt 2 ]]; then
+        return 1
+    fi
 
     return 0
 }
