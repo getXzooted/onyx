@@ -742,75 +742,157 @@ function apply_telemetry_blackout() {
 }
 
 
-# --- BROWSER IDENTITY SCRUBBER (Privoxy) ---
 
-function check_browser_scrubbing() {
-    # 1. Audit: Is the service active?
-    if ! systemctl is-active privoxy &>/dev/null; then
-        return 1
-    fi
 
-    # 2. Audit: Is the transparent redirection active in iptables?
-    # Redirects Port 80 (HTTP) to Privoxy's port 8118
-    if ! iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null; then
-        return 1
-    fi
+   
+# --- THE SOVEREIGN IDENTITY SCRUBBER (MITM + NGINX) ---
+
+function check_identity_scrubber() {
+    # 1. Audit Services
+    systemctl is-active --quiet nginx || return 1
+    systemctl is-active --quiet privoxy || return 1
+
+    # 2. Audit CA Certificate existence
+    [[ ! -f "/etc/privoxy/certs/onyx-ca.crt" ]] && return 1
+
+    # 3. Audit Firewall (Port 80 and 443 redirection)
+    iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 &>/dev/null || return 1
+    iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118 &>/dev/null || return 1
 
     return 0
 }
 
-function apply_browser_scrubbing() {
+function apply_identity_scrubber() {
     if [[ "$1" == "true" ]]; then
-        log_step "Engaging Browser Identity Scrubber (Privoxy)..."
+        log_step "Engaging Identity Scrubber (MITM Persona Sync)..."
 
-        # 1. Install Privoxy if missing
+        # 1. Install Privoxy + NGINX if missing
         if ! command -v privoxy &>/dev/null; then
             apt-get install -y -qq privoxy &>/dev/null
         fi
 
-        # 2. Fetch the Unified Persona from YAML
-        local PERSONA=$(yq e '.hardening.persona' "$HARDENING_YAML")
-        
-        # 3. Define User-Agents based on Persona
-        case "$PERSONA" in
-            apple)   
-                UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
-                ;;
-            windows) 
-                UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ;;
-            *)       
-                UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                ;;
-        esac
+        if ! command -v nginx &>/dev/null; then
+            apt-get install -y -qq nginx &>/dev/null
+        fi
 
-        # 4. Generate the 'Sovereign' Action File
-        # This kills Referers and Client-Hints seen in your screenshot
-        cat <<EOF > /etc/privoxy/user.action
-{ +hide-referrer{forge} \
-  +hide-user-agent{$UA} \
-  +hide-from-header{block} \
-  +set-image-blocker{blank} \
-}
-/ # Apply to all outgoing traffic
+        # 1. GENERATE SOVEREIGN CA (If missing)
+        if [[ ! -f "/etc/privoxy/certs/onyx-ca.crt" ]]; then
+            log_info "Generating Sovereign Root CA..."
+            openssl req -new -newkey rsa:2048 -sha256 -days 3650 -nodes -x509 \
+                -keyout /etc/privoxy/certs/onyx-ca.key \
+                -out /etc/privoxy/certs/onyx-ca.crt \
+                -subj "/CN=Onyx Sovereign Root CA" &>/dev/null
+            cp /etc/privoxy/certs/onyx-ca.crt /var/www/onyx/ca.crt
+        fi
+
+        # 2. CONFIGURE PRIVOXY (Persona Mapping)
+        local PERSONA=$(yq e '.hardening.persona' "$HARDENING_YAML")
+        [[ "$PERSONA" == "apple" ]] && UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+        [[ "$PERSONA" == "windows" ]] && UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        [[ "$PERSONA" == "linux" ]] && UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        # Update Privoxy Config for HTTPS Inspection
+        cat <<EOF > /etc/privoxy/config
+confdir /etc/privoxy
+logdir /var/log/privoxy
+filterfile default.filter
+user-manual /usr/share/doc/privoxy/user-manual
+listen-address 0.0.0.0:8118
+toggle 1
+enable-remote-toggle 0
+enable-edit-actions 0
+enable-remote-http-toggle 0
+buffer-limit 4096
+accept-intercepted-requests 1
+ca-directory /etc/privoxy/certs
+ca-cert-file onyx-ca.crt
+ca-key-file onyx-ca.key
+ca-password password
+trusted-cas-file /etc/ssl/certs/ca-certificates.crt
+https-inspection 1
 EOF
 
-        # 5. Enable Transparent Proxy Mode in main config
-        # We tell Privoxy to listen on the gateway IP
-        sed -i 's/listen-address  127.0.0.1:8118/listen-address  0.0.0.0:8118/' /etc/privoxy/config
-        # Accept intercepted (transparent) connections
-        if ! grep -q "accept-intercepted-requests 1" /etc/privoxy/config; then
-            echo "accept-intercepted-requests 1" >> /etc/privoxy/config
-        fi
-
+        # Apply the Identity Wash (Scrubbing Referers and Headers)
+        cat <<EOF > /etc/privoxy/user.action
+{+https-inspection}
+/
+{ +hide-referrer{forge} +hide-user-agent{$UA} +hide-from-header{block} }
+/
+EOF
         systemctl restart privoxy
 
-        # 6. INJECT FIREWALL REDIRECT
-        # This forces all hotspot clients (uap0) through the scrubber
-        if ! iptables -t nat -C PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118 2>/dev/null; then
-            iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
-        fi
+        # 3. CONFIGURE NGINX (Welcome Page & Certificate Host)
+        cat <<EOF > /etc/nginx/sites-available/default
+server {
+    listen 80 default_server;
+    root /var/www/onyx;
+    index index.html;
+    location /ca.crt { default_type application/x-x509-ca-cert; }
+}
+EOF
+
+# --- Generate Sovereign Welcome Page ---
+        log_info "Generating Sovereign Welcome Page for $PERSONA Persona..."
         
-        log_success "Browser Stealth: Now appearing as $PERSONA ($UA)."
+        # Pull Persona Details for Display
+        local DISPLAY_PERSONA="Unknown"
+        [[ "$PERSONA" == "apple" ]] && DISPLAY_PERSONA="Apple / Safari"
+        [[ "$PERSONA" == "windows" ]] && DISPLAY_PERSONA="Windows / Edge"
+
+        cat <<EOF > /var/www/onyx/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onyx Sovereign Gateway</title>
+    <style>
+        :root { --onyx-blue: #007bff; --onyx-bg: #0a0a0a; --onyx-card: #161616; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--onyx-bg); color: #e0e0e0; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: var(--onyx-card); padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 450px; width: 90%; border: 1px solid #333; }
+        h1 { font-size: 1.8rem; margin-bottom: 0.5rem; color: #fff; }
+        .status-badge { background: #00ff0022; color: #00ff00; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; display: inline-block; margin-bottom: 1.5rem; }
+        p { line-height: 1.6; color: #b0b0b0; }
+        .persona-tag { color: var(--onyx-blue); font-weight: bold; }
+        .btn { display: block; background: var(--onyx-blue); color: white; padding: 14px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 2rem; transition: background 0.2s; }
+        .btn:hover { background: #0056b3; }
+        .footer { margin-top: 2rem; font-size: 0.75rem; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Onyx Sovereign</h1>
+        <div class="status-badge">● Identity Masking Active</div>
+        
+        <p>This network is currently masking your traffic using the <span class="persona-tag">$DISPLAY_PERSONA</span> Persona.</p>
+        
+        <p>To enable <strong>Day 1 Stealth</strong> (Full HTTPS Scrubber), you must trust the gateway certificate on this device.</p>
+        
+        <a href="/ca.crt" class="btn">Download Sovereign Certificate</a>
+
+        <div class="footer">
+            Sovereign Gateway v2.1.0 | Forensic-Zero | ZRAM-Optimized
+        </div>
+    </div>
+</body>
+</html>
+EOF
+
+        systemctl restart nginx
+
+        # 4. FIREWALL: IOT MAC BYPASS & REDIRECTION
+        # This addresses your IoT hurdle by exempting specific MACs from the scrubber
+        log_info "Applying Firewall Scrubber Rules..."
+        
+        # Pull the bypass list from YAML (e.g. hardening.iot_bypass: ["aa:bb:cc...", "11:22..."])
+        local BYPASS_MACS=$(yq e '.hardening.iot_bypass[]' "$HARDENING_YAML" 2>/dev/null)
+        for mac in $BYPASS_MACS; do
+            iptables -t nat -A PREROUTING -i uap0 -m mac --mac-source "$mac" -j ACCEPT
+        done
+
+        # Redirect the rest of the traffic to the Scrubber
+        iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
+        iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118
+        
+        log_success "Identity Scrubber Active. Persona: $PERSONA."
     fi
 }
