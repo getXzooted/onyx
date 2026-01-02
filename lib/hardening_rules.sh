@@ -899,10 +899,10 @@ EOF
             sudo iptables -t nat -I PREROUTING -i uap0 -m mac --mac-source "$mac" -j ACCEPT
         done
 
-        # D. The Main Redirection (Append to the end of the chain)
-        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 80 -j REDIRECT --to-port 8118
-        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp --dport 443 -j REDIRECT --to-port 8118
-        
+        # D. The Main Redirection (With local exclusion)
+        # ! -d 10.3.141.1 ensures the phone can reach the Welcome Page on the Pi
+        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 80 -j REDIRECT --to-port 8118
+        sudo iptables -t nat -A PREROUTING -i uap0 -p tcp ! -d 10.3.141.1 --dport 443 -j REDIRECT --to-port 8118
         log_success "Identity Scrubber Active."
     fi
 }
