@@ -18,22 +18,18 @@ fi
 # 3. Move/Clone to /opt/onyx (The Standard Location)
 # If we are not already in /opt/onyx, we copy ourselves there.
 if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
-    echo "Installing Onyx to $INSTALL_DIR..."
-    mkdir -p "$INSTALL_DIR"
-    cp -r . "$INSTALL_DIR"
-
     # Backup existing config if it exists before copying
-    if [ -f "$INSTALL_DIR/config/onyx.yml" ]; then
-        cp "$INSTALL_DIR/config/onyx.yml" /tmp/onyx.yml.bak
+    if [ -d "$INSTALL_DIR/config/" ]; then
+        mv "$INSTALL_DIR/config/" /tmp/onyx/config/
     fi
 
+    echo "Installing Onyx to $INSTALL_DIR..."
     mkdir -p "$INSTALL_DIR"
     cp -r . "$INSTALL_DIR"
     
     # Restore the backup
-    if [ -f /tmp/onyx.yml.bak ]; then
-        mv /tmp/onyx.yml.bak "$INSTALL_DIR/config/onyx.yml"
-        log_success "Preserved existing onyx.yml configuration."
+    if [ -d /tmp/onyx/config/ ]; then
+        mv /tmp/onyx/config/ "$INSTALL_DIR/config/"
     fi
 
     # Fix permissions
