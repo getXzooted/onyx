@@ -13,7 +13,7 @@
 [[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
 
 # 3. Discover Hardware and Enroll
-source "$ONYX_ROOT/lib/network/discovery.sh"
+source "$ONYX_ROOT/modules/network/discovery.sh"
 discover_hardware # Finds WAN and populates interfaces in hardening.yml
 enroll_hardware # Enrolls the Hardware with default 'off'
 
