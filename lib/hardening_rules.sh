@@ -480,7 +480,7 @@ function apply_webrtc_lockdown() {
     build_rule OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP
 }
 
-function check_syn_proxy() {
+function check_old_syn_proxy() {
     iptables -t raw -C PREROUTING -i vlan20 -p tcp --syn -j NOTRACK &>/dev/null && return 0 || return 1
 }
 
@@ -493,6 +493,11 @@ function apply_old_syn_proxy() {
         # 2. Drop anything that doesn't complete the handshake with the Pi
         iptables -A FORWARD -i vlan20 -m state --state INVALID -j DROP
     fi
+}
+
+function check_syn_proxy() {
+    # Match the new label-based logic from the apply worker
+    iptables -S FORWARD 2>/dev/null | grep -q "ONYX_SYN_PROXY" && return 0 || return 1
 }
 
 function apply_syn_proxy() {
