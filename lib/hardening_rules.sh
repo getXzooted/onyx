@@ -1040,3 +1040,31 @@ function check_tunnel_integrity() {
     iptables -t nat -C POSTROUTING -o wg0 -j MASQUERADE &>/dev/null && return 0
     return 1
 }
+
+
+# --- HARDWARE TRIGGER WORKER ---
+
+function check_hardware_reactive() {
+    local RULE_FILE="/etc/udev/rules.d/99-onyx-hardware.rules"
+    local TRIGGER='SUBSYSTEM=="net", ACTION=="add", RUN+="/opt/onyx/bin/onyx network repair"'
+
+    # Check if file exists and contains the correct trigger path
+    [[ -f "$RULE_FILE" ]] && grep -q "$TRIGGER" "$RULE_FILE" && return 0
+    return 1
+}
+
+function apply_hardware_reactive() {
+    local RULE_FILE="/etc/udev/rules.d/99-onyx-hardware.rules"
+    local TRIGGER='SUBSYSTEM=="net", ACTION=="add", RUN+="/opt/onyx/bin/onyx network repair"'
+
+    if [[ "$1" == "true" ]]; then
+        log_step "Enabling Reactive Hardware Discovery (udev)..."
+        echo "$TRIGGER" > "$RULE_FILE"
+        udevadm control --reload-rules && udevadm trigger
+        log_success "Hardware Trigger Active."
+    else
+        log_warning "Disabling Reactive Discovery..."
+        rm -f "$RULE_FILE"
+        udevadm control --reload-rules
+    fi
+}
