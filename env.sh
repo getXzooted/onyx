@@ -12,6 +12,11 @@
 # 2. Fallback for standard installation
 [[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
 
+# 3. Discover Hardware and Enroll
+source "$ONYX_ROOT/lib/network/discovery.sh"
+discover_hardware # Finds WAN and populates interfaces in hardening.yml
+enroll_hardware # Enrolls the Hardware with default 'off'
+
 # 3. Initialize Variables
 source "$ONYX_ROOT/vars.sh"
 
