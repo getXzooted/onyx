@@ -6,6 +6,14 @@ networks:
   parent: "uap0" 
 
   segments:
+    - name: "home0"
+      id: 10
+      ssid: "Onyx"
+      subnet: "10.10.0.1/24"
+      dhcp_range: "10.10.0.50,10.10.0.255"
+      dns: "127.0.0.1"   # Points to Unbound for privacy
+      isolated: false    # Flag for the firewall to block inter-VLAN talk
+      
     - name: "guest0"      # The interface name created in the kernel
       id: 50             # The 802.1Q Tag ID
       subnet: "10.50.0.1/24"
