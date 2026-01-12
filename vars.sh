@@ -26,6 +26,11 @@ export HARDENING_YAML="$CONFIG_DIR/hardening.yml"
 export ONYX_LOG_RAM="/var/log/onyx"
 export ONYX_RESUME_MARKER="/var/opt/onyx_resume_pending"
 
+# --- VLAN Feature Paths ---
+export VLAN_MODULES_DIR="$ONYX_ROOT/modules/vlan"
+export VLAN_LIB_DIR="$ONYX_ROOT/lib/vlan"
+export ONYX_VLAN_TEMPLATE="$ONYX_ROOT/config/templates/dnsmasq/vlan.conf"
+
 # --- TEMPLATE PATHS ---
 export ONYX_UNBOUND_TEMPLATE="$CONFIG_DIR/templates/unbound/unbound.conf"
 
