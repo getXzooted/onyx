@@ -42,6 +42,7 @@ hardening:
 
   # --- PHASE 3: ACTIVE DEFENSE & TRAFFIC OBFUSCATION ---
   network:
+    hardware_reactive: true      # When true, Onyx instantly locks down new hardware via udev
     safety_net: true             # Enables Onyx Safety Net
     sentinel_trap: true          #
     tarpit_trap: false           # Engage TARPIT for connection attempts
