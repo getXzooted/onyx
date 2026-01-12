@@ -16,10 +16,10 @@
 source "$ONYX_ROOT/core/functions.sh"
 source "$ONYX_ROOT/core/logger.sh"
 
-# 4. Discover Hardware and Enroll
+# 4. Initialize Variables
+source "$ONYX_ROOT/vars.sh"
+
+# 5. Discover Hardware and Enroll
 source "$ONYX_ROOT/modules/network/discovery.sh"
 discover_hardware # Finds WAN and populates interfaces in hardening.yml
 enroll_hardware # Enrolls the Hardware with default 'off'
-
-# 5. Initialize Variables
-source "$ONYX_ROOT/vars.sh"
