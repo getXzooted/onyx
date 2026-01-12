@@ -2,6 +2,8 @@
 # LINEAR EXECUTION ORDER: FOUNDATION -> STEALTH -> RETALIATION
 hardening:
   persona: "apple"              # Options: 'apple', 'windows', 'linux'
+
+  interfaces:
   
   # --- PHASE 1: FOUNDATION (The "Keep-Alive" Rules) ---
   foundation:
