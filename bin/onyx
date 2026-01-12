@@ -144,6 +144,15 @@ case "$COMMAND" in
         fi
         ;;
 
+    vlan)
+        STATUS_SCRIPT="$ONYX_ROOT/lib/vlan/vlan.sh"
+        if [ -f "$STATUS_SCRIPT" ]; then
+            source "$STATUS_SCRIPT" "${@:2}"
+        else
+            log_error "VLAN module not found."
+        fi
+        ;;
+
     update)
         log_header "RUNNING UPDATE MANAGER"
         source "$ONYX_ROOT/core/update.sh"
