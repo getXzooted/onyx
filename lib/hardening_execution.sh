@@ -1,12 +1,38 @@
 #!/bin/bash
 # lib/hardening_execution.sh
 
-function build_rule() {
+function old_build_rule() {
     local CHAIN=$1; shift
     local RULE=$@
     if ! iptables -C "$CHAIN" $RULE 2>/dev/null; then
         iptables -I "$CHAIN" 1 $RULE
         log_success "Injected rule: $RULE"
+    fi
+}
+
+function build_rule() {
+    local CHAIN=$1
+    shift
+    local RULE="$*"
+
+    # 1. Check for a Label (Optional)
+    # If the rule contains a comment, we check for that comment specifically.
+    # This prevents duplication of complex rules like SYNPROXY.
+    if [[ "$RULE" == *"--comment"* ]]; then
+        local LABEL=$(echo "$RULE" | grep -oP '(?<=--comment ")[^"]+')
+        if iptables -S "$CHAIN" | grep -q "$LABEL"; then
+            return 0
+        fi
+    fi
+
+    # 2. Standard Idempotency Check
+    # We use -A (Append) because the Safety Net flushes the board first.
+    # This preserves the Linear Order from the YAML file.
+    if ! iptables -C "$CHAIN" $RULE 2>/dev/null; then
+        iptables -A "$CHAIN" $RULE
+        log_success "Injected rule: $RULE"
+    else
+        log_info "Rule already exists, skipping: $RULE"
     fi
 }
 
