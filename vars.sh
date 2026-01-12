@@ -30,6 +30,7 @@ export ONYX_RESUME_MARKER="/var/opt/onyx_resume_pending"
 export VLAN_MODULES_DIR="$ONYX_ROOT/modules/vlan"
 export VLAN_LIB_DIR="$ONYX_ROOT/lib/vlan"
 export ONYX_VLAN_TEMPLATE="$ONYX_ROOT/config/templates/dnsmasq/vlan.conf"
+export ONYX_HOSTAPD_TEMPLATE="$ONYX_ROOT/config/templates/hostapd/multi_ssid.conf"
 
 # --- TEMPLATE PATHS ---
 export ONYX_UNBOUND_TEMPLATE="$CONFIG_DIR/templates/unbound/unbound.conf"
