@@ -1,6 +1,24 @@
 # ONYX CONFIGURATION TEMPLATE
 # Rename this to onyx.yml and place in /boot to provision.
 
+networks:
+  # The physical parent established during Discovery
+  parent: "uap0" 
+
+  segments:
+    - name: "guest0"      # The interface name created in the kernel
+      id: 50             # The 802.1Q Tag ID
+      subnet: "10.50.0.1/24"
+      dhcp_range: "10.50.0.50,10.50.0.255"
+      dns: "127.0.0.1"   # Points to Unbound for privacy
+      isolated: true     # Flag for the firewall to block inter-VLAN talk
+    
+    - name: "iot0"
+      id: 60
+      subnet: "10.60.0.1/24"
+      dhcp_range: "10.60.0.100,10.60.0.200"
+      isolated: true
+
 # --- VPN SETTINGS (Required) ---
 # You can also drop a 'wg0.conf' file in /boot instead of filling this out.
 vpn_private_key: "YOUR_PRIVATE_KEY_HERE"
