@@ -484,7 +484,7 @@ function check_syn_proxy() {
     iptables -t raw -C PREROUTING -i vlan20 -p tcp --syn -j NOTRACK &>/dev/null && return 0 || return 1
 }
 
-function apply_syn_proxy() {
+function apply_old_syn_proxy() {
     if [[ "$1" == "true" ]]; then
         log_step "Engaging SYN Proxy (VLAN Isolation Guard)..."
         # 1. Flag packets for SYNPROXY processing
@@ -492,6 +492,20 @@ function apply_syn_proxy() {
         iptables -A FORWARD -i vlan20 -p tcp -m state --state INVALID,UNTRACKED -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
         # 2. Drop anything that doesn't complete the handshake with the Pi
         iptables -A FORWARD -i vlan20 -m state --state INVALID -j DROP
+    fi
+}
+
+function apply_syn_proxy() {
+    if [[ "$1" == "true" ]]; then
+        log_step "Engaging SYN Proxy (VLAN Isolation Guard)..."
+        
+        # We add a unique comment so build_rule can find it instantly
+        build_rule FORWARD -p tcp -m state --state INVALID,UNTRACKED \
+            -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 \
+            -m comment --comment "ONYX_SYN_PROXY"
+            
+        build_rule FORWARD -m state --state INVALID -j DROP \
+            -m comment --comment "ONYX_INVALID_DROP"
     fi
 }
 
