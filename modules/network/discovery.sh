@@ -78,4 +78,3 @@ function enroll_hardware() {
         fi
     done
 }
-}
