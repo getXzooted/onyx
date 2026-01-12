@@ -1,7 +1,7 @@
 #!/bin/bash
 # LIB: VLAN CLI Controller
 
-source "$VLAN_MODULES_DIR/manager.sh"
+source "$VLAN_MODULES_DIR/engine.sh"
 
 function vlan_sync_all() {
     log_header "SYNCHRONIZING VLAN SEGMENTS"
