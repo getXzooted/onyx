@@ -69,3 +69,25 @@ function vlan_update_wireless() {
         echo "rsn_pairwise=CCMP" # Modern security only
     } >> "$HOSTAPD_CONF"
 }
+
+# --- WORKER 4: HOSTAPD INITIALIZATION ---
+function vlan_initialize_hostapd() {
+    local PARENT=$1
+    local SSID=$(yq e '.wifi_ssid' "$ONYX_YAML")
+    local PASS=$(yq e '.wifi_password' "$ONYX_YAML")
+    
+    cat <<EOF > /etc/hostapd/hostapd.conf
+interface=$PARENT
+driver=nl80211
+ssid=$SSID
+hw_mode=g
+channel=6
+wpa=2
+wpa_passphrase=$PASS
+wpa_key_mgmt=WPA-PSK
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+rsn_pairwise=CCMP
+EOF
+}
