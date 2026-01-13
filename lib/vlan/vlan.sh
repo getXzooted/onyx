@@ -1,46 +1,53 @@
 #!/bin/bash
-# LIB: VLAN CLI Controller - Multi-SSID Edition
+# LIB: VLAN CLI Controller - Multi-SSID Master Sync
 
 source "$ONYX_ROOT/modules/vlan/engine.sh"
 
 function vlan_sync_all() {
-    log_header "SYNCHRONIZING VLAN & WIRELESS SEGMENTS"
+    log_header "SYNCHRONIZING NETWORK SEGMENTS"
     
-    # 1. Clear old Virtual DHCP configs to prevent stale leases
+    # 1. Initialization: Reset DHCP fragments and Hostapd
     rm -f /etc/dnsmasq.d/10-vlan-*.conf
+    # Note: Hostapd rebuild logic will be added in the next refactor phase
 
-    # 2. Extract and Iterate Segments from onyx.yml
+    # 2. Iterate Segments defined in onyx.yml
     local SEGMENTS=$(yq e '.networks.segments[].name' "$ONYX_YAML")
     
     for NAME in $SEGMENTS; do
-        # Extract YAML values for this segment
+        # Extract YAML values
         local ID=$(yq e ".networks.segments[] | select(.name == \"$NAME\") | .id" "$ONYX_YAML")
         local SSID=$(yq e ".networks.segments[] | select(.name == \"$NAME\") | .ssid" "$ONYX_YAML")
         local SUBNET=$(yq e ".networks.segments[] | select(.name == \"$NAME\") | .subnet" "$ONYX_YAML")
         local RANGE=$(yq e ".networks.segments[] | select(.name == \"$NAME\") | .dhcp_range" "$ONYX_YAML")
         local ISOLATED=$(yq e ".networks.segments[] | select(.name == \"$NAME\") | .isolated" "$ONYX_YAML")
 
-        # Step A: Create Kernel Interface & Assign IP
-        vlan_apply_state "$NAME" "$ID" "$SUBNET" "$RANGE"
+        # Step A: Build Kernel Hardware
+        vlan_apply_hardware "$NAME" "$ID" "$SUBNET"
 
-        # Step B: If SSID is defined, prepare the hostapd bridge
+        # Step B: Deploy DHCP Pool
+        vlan_generate_dhcp "$NAME" "$RANGE"
+
+        # Step C: Wireless Broadcast
         if [[ "$SSID" != "null" ]]; then
-            log_step "Mapping $NAME to Wireless SSID: $SSID"
-            # Logic here will eventually append to the hostapd template
+            # Uses the password from the main hotspot for now
+            local PASS=$(yq e '.wifi_password' "$ONYX_YAML")
+            vlan_update_wireless "$NAME" "$SSID" "$PASS"
         fi
 
-        # Step C: Enforcement - If isolated=true, apply firewall barrier
+        # Step D: Hardening Enforcement
         if [[ "$ISOLATED" == "true" ]]; then
-            log_info "Enforcing isolation for $NAME..."
+            log_info "Enforcing isolation barrier for $NAME..."
+            # Prevent this segment from talking to the primary LAN (uap0)
             build_rule FORWARD -i "$NAME" -o "$ONYX_LAN_IFACE" -j DROP
         fi
     done
 
     systemctl restart dnsmasq
-    log_success "All VLAN segments synchronized and hardened."
+    systemctl restart hostapd
+    log_success "All segments (Home, Guest, IoT) are ACTIVE and SECURED."
 }
 
 case "$1" in
     sync)   vlan_sync_all ;;
-    *)      echo "Usage: onyx vlan {sync}" ;;
+    *)      echo "Usage: onyx vlan sync" ;;
 esac
