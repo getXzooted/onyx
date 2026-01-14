@@ -1,7 +1,6 @@
 #!/bin/bash
-# CORE: Config Parser
-# Reads config/onyx.yml and converts YAML keys to Bash variables.
-# Example: "vpn_endpoint: 1.2.3.4" -> export ONYX_VPN_ENDPOINT="1.2.3.4"
+# CORE: Config Parser (Agnostic yq Engine)
+# Reads config/onyx.yml and dynamically builds variables from any YAML path.
 
 function load_config() {
     local CONFIG_FILE="$ONYX_ROOT/config/onyx.yml"
@@ -11,51 +10,39 @@ function load_config() {
         return 1
     fi
 
-    log_step "Loading configuration..."
+    log_step "Engaging Agnostic Config Engine..."
 
-    # Read the file line by line
-    while IFS=':' read -r key value; do
-        # 1. Ignore comments (#) and empty lines
-        [[ "$key" =~ ^#.*$ ]] && continue
+    # 1. Use yq to extract every scalar (value) and its full path
+    # This flattens the YAML: "networks.segments[0].name" becomes "NETWORKS_SEGMENTS_0_NAME"
+    local FLAT_CONFIG=$(yq e '.. | select(tag == "!!scalar") | (path | join("_") | upcase) + "=" + .' "$CONFIG_FILE")
+
+    # 2. Iterate through the flattened results
+    while IFS='=' read -r key value; do
         [[ -z "$key" ]] && continue
 
-        # 2. Trim leading/trailing whitespace from Key
-        key="${key#"${key%%[![:space:]]*}"}"
-        key="${key%"${key##*[![:space:]]}"}"
-        key=$(echo "$key" | tr -d '\r')
+        # 3. Clean and Prefix the Variable Name
+        # Replaces any non-alphanumeric characters with underscores just in case
+        local clean_key=$(echo "$key" | tr -c '[:alnum:]' '_')
+        local var_name="ONYX_${clean_key^^}"
 
-        # 3. Clean Value: Remove comments, whitespace, Windows \r, and surrounding quotes
-        value="${value%% #*}"                   # Remove inline comments
-        value="${value#"${value%%[![:space:]]*}"}" # Trim leading space
-        value="${value%"${value##*[![:space:]]}"}" # Trim trailing space
-        value=$(echo "$value" | tr -d '\r')
-        
-        # 4. Strip surrounding quotes safely
-        if [[ "$value" == \"*\" ]]; then value="${value#\"}"; value="${value%\"}"; fi
-        if [[ "$value" == \'*\' ]]; then value="${value#\'}"; value="${value%\'}"; fi
-        
-        # 5. Convert to Upper Case Variable (e.g., vpn_port -> ONYX_VPN_PORT)
-        # We prefix with ONYX_ to avoid conflicts with system variables
-        local var_name="ONYX_${key^^}"
+        # 4. Strip surrounding quotes from the value
+        value="${value#\"}"; value="${value%\"}"
+        value="${value#\'}"; value="${value%\'}"
 
-        # --- REPAIR TRUNCATED KEYS ---
+        # 5. REPAIR TRUNCATED KEYS (WireGuard Base64 check)
+        # Preserving your custom logic for the VPN keys
         if [[ "$var_name" == "ONYX_VPN_PRIVATE_KEY" || "$var_name" == "ONYX_VPN_PUBKEY" ]]; then
-             # Remove any accidental whitespace
              local clean_val=$(echo "$value" | tr -d '[:space:]')
-             
-             # If it's exactly 43 chars, it is missing the '='. Add it.
              if [ ${#clean_val} -eq 43 ]; then
                  value="${clean_val}="
              fi
         fi
 
-        # 6. Export the variable so other scripts can see it
+        # 6. EXPORT: Agnostically inject into the environment
         export "$var_name"="$value"
         
-        # Debug line (Uncomment to see what is being loaded)
-        # echo "Loaded: $var_name = $value"
+        # log_info "Mapped: $var_name" # Useful for debugging the sync
+    done <<< "$FLAT_CONFIG"
 
-    done < "$CONFIG_FILE"
-
-    log_success "Configuration loaded."
+    log_success "Configuration Engine: Variable Mapping Synchronized."
 }
