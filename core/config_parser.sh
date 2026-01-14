@@ -42,7 +42,8 @@ function load_config() {
         # 6. EXPORT: Agnostically inject into the environment
         export "$var_name"="$value"
         
-        # log_info "Mapped: $var_name" # Useful for debugging the sync
+        log_info "Mapped: $var_name" # Useful for debugging the sync
+        sleep  1
     done <<< "$FLAT_CONFIG"
 
     log_success "Configuration Engine: Variable Mapping Synchronized."
