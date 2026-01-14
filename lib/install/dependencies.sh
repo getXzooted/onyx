@@ -11,6 +11,7 @@ log_step "Updating package lists..."
 apt-get update -qq
 
 # 3. Install Core Dependencies
+# - yq: YAML processor
 # - bc: Arbitrary precision calculator
 # - wireguard: VPN protocol
 # - iptables: Firewall management
@@ -22,7 +23,7 @@ apt-get update -qq
 # - macchanger: Change MAC addresses for privacy
 # - ethtool: Ethernet device settings
 # - xtables-addons-common: Additional iptables modules (when kernel 6.12 supported)
-DEPENDENCIES=(bc wireguard iptables unbound curl git qrencode dnsmasq hostapd macchanger ethtool )
+DEPENDENCIES=(yq bc wireguard iptables unbound curl git qrencode dnsmasq hostapd macchanger ethtool )
 
 log_step "Installing dependencies: ${DEPENDENCIES[*]}..."
 
