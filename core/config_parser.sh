@@ -14,7 +14,8 @@ function load_config() {
 
     # 1. Use yq to extract every scalar (value) and its full path
     # This flattens the YAML: "networks.segments[0].name" becomes "NETWORKS_SEGMENTS_0_NAME"
-    local FLAT_CONFIG=$(yq e '.. | select(tag == "!!scalar") | (path | join("_") | upcase) + "=" + .' "$CONFIG_FILE")
+    local FLAT_CONFIG
+    FLAT_CONFIG=$(yq e '.. | select(tag == "!!scalar") | (path | join("_") | upcase) + "=" + .' "$CONFIG_FILE" 2>/dev/null)
 
     # 2. Iterate through the flattened results
     while IFS='=' read -r key value; do
