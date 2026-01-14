@@ -46,6 +46,11 @@ function vlan_sync_all() {
     log_success "Sovereign Stack is now ACTIVE with Multi-SSID support."
 }
 
+# 5. Discover Hardware and Enroll
+source "$ONYX_ROOT/modules/network/discovery.sh"
+discover_hardware # Finds WAN and populates interfaces in hardening.yml
+enroll_hardware # Enrolls the Hardware with default 'off'
+
 case "$1" in
     sync) vlan_sync_all ;;
     *)    echo "Usage: onyx vlan sync" ;;
