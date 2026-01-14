@@ -5,6 +5,8 @@
 function load_config() {
     local CONFIG_FILE="$ONYX_ROOT/config/onyx.yml"
 
+    local YQ_BIN="/usr/local/bin/yq"
+
     if [ ! -f "$CONFIG_FILE" ]; then
         log_warning "Configuration file not found at $CONFIG_FILE"
         return 1
@@ -15,7 +17,7 @@ function load_config() {
     # 1. Use yq to extract every scalar (value) and its full path
     # This flattens the YAML: "networks.segments[0].name" becomes "NETWORKS_SEGMENTS_0_NAME"
     local FLAT_CONFIG
-    FLAT_CONFIG=$(yq e '.. | select(tag == "!!scalar") | (path | join("_") | upcase) + "=" + .' "$CONFIG_FILE" 2>/dev/null)
+    FLAT_CONFIG=$($YQ_BIN e '.. | select(tag == "!!scalar") | (path | join("_") | upcase) + "=" + .' "$CONFIG_FILE" 2>/dev/null)
 
     # 2. Iterate through the flattened results
     while IFS='=' read -r key value; do
