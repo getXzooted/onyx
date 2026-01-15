@@ -48,10 +48,7 @@ function load_config() {
         fi
 
         # 6. EXPORT: Agnostically inject into environment
-        # Now your log_info and debug sleep will trigger
         export "$var_name"="$value"
-        log_info "Config Engine: Set $var_name to $value"
-        sleep 1
     done <<< "$FLAT_CONFIG"
 
     log_success "Configuration variables (DNS, VPN, SDN) synchronized."
