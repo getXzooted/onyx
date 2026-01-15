@@ -29,6 +29,7 @@ function load_config() {
     # yq properties output uses '=', so we read accordingly
     while IFS='=' read -r key value; do
         [[ -z "$key" ]] && continue
+        [[ "$key" =~ ^# ]] && continue
 
         # 3. Clean Key: Replace dots with underscores and force Uppercase
         # 'networks.parent' -> 'ONYX_NETWORKS_PARENT'
