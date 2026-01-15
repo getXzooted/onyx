@@ -1,13 +1,11 @@
 #!/bin/bash
-# ONYX INSTALLER
-# The entry point. Sets up the environment and triggers the CLI.
+# ONYX INSTALLER - The entry point. Sets up the environment and triggers the CLI.
 
 # 1. Detect Path
+echo "=== ONYX INSTALLER ==="
 USER_ID=${SUDO_USER:-$USER}
 INSTALL_DIR="/opt/onyx"
 CURRENT_DIR=$(pwd)
-
-echo "=== ONYX INSTALLER ==="
 
 # 2. Check Root
 if [[ $EUID -ne 0 ]]; then
@@ -15,8 +13,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# 3. Move/Clone to /opt/onyx (The Standard Location)
-# If we are not already in /opt/onyx, we copy ourselves there.
+# 3. Move/Clone to /opt/onyx (The Standard Location) - If we are not already in /opt/onyx, we copy ourselves there.
 if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     # Backup existing config if it exists before copying
     if [ -d "$INSTALL_DIR/config/" ]; then
@@ -28,9 +25,7 @@ if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     cp -r . "$INSTALL_DIR"
     
     # Restore the backup
-    if [ -d /tmp/onyx/config/ ]; then
-        mv /tmp/onyx/config/ "$INSTALL_DIR/config/"
-    fi
+    if [ -d /tmp/onyx/config/ ]; then mv /tmp/onyx/config/ "$INSTALL_DIR/config/"; fi
 
     # Fix permissions
     chmod +x "$INSTALL_DIR/bin/onyx"
@@ -38,17 +33,18 @@ if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     find "$INSTALL_DIR" -name "*.sh" -exec chmod +x {} \;
 fi
 
-# 4. Symlink the CLI
-# This allows you to type 'sudo onyx' from anywhere.
+# 4. Symlink the CLI - This allows you to type 'sudo onyx' from anywhere.
 if [ ! -L "/usr/local/bin/onyx" ]; then
     echo "Creating 'onyx' command link..."
     ln -s "$INSTALL_DIR/bin/onyx" /usr/local/bin/onyx
 fi
 
-# If missing or incorrect, install the Go binary:
-wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
-chmod +x /usr/local/bin/yq
+# 5. If missing or incorrect, install the Go binary:
+if yq --version &>/dev/null && [ "$(yq --version | cut -d' ' -f4 | cut -d'.' -f1)" -lt 4 ]; then
+    wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
+    chmod +x /usr/local/bin/yq
+fi
 
-# 5. Handover to the CLI Controller
+# 6. Handover to the CLI Controller
 echo "Handing over to Onyx Controller..."
 /usr/local/bin/onyx install
