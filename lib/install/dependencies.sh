@@ -29,10 +29,6 @@ log_step "Installing dependencies: ${DEPENDENCIES[*]}..."
 # DEBIAN_FRONTEND=noninteractive prevents popups during install
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${DEPENDENCIES[@]}"
 
-# If missing or incorrect, install the Go binary:
-wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
-chmod +x /usr/local/bin/yq
-
 # 4. Check for installation success
 if [ $? -eq 0 ]; then
     log_success "All core dependencies installed."

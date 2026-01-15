@@ -45,6 +45,10 @@ if [ ! -L "/usr/local/bin/onyx" ]; then
     ln -s "$INSTALL_DIR/bin/onyx" /usr/local/bin/onyx
 fi
 
+# If missing or incorrect, install the Go binary:
+wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
+chmod +x /usr/local/bin/yq
+
 # 5. Handover to the CLI Controller
 echo "Handing over to Onyx Controller..."
 /usr/local/bin/onyx install
