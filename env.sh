@@ -2,12 +2,30 @@
 # CORE: Environment Loader
 # Purpose: Establishes paths and loads foundational libraries.
 
-# 1. Establish Root Context
- CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
- export ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+# Load Functions Library
+if [ -f "$CORE_DIR/functions.sh" ]; then
+    source "$CORE_DIR/functions.sh"
+else
+    echo "CRITICAL ERROR: Functions library not found at $CORE_DIR/functions.sh"
+    exit 1
+fi
 
-#CURRENT_SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-#export ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+# Logger is required for all scripts
+if [ -f "$CORE_DIR/logger.sh" ]; then
+    source "$CORE_DIR/logger.sh"
+else
+    echo "CRITICAL ERROR: Logger not found at $CORE_DIR/logger.sh"
+    exit 1
+fi
+
+# Load Config Parser to read onyx.yml
+if [ -f "$CORE_DIR/config_parser.sh" ]; then
+    source "$CORE_DIR/config_parser.sh"
+    # Run the load function immediately
+    load_config
+else
+    log_warning "Config parser not found. Running with defaults."
+fi
 
 # 2. Fallback for standard installation
 [[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
