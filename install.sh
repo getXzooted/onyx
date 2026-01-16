@@ -38,6 +38,7 @@ if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     
     # Restore the backup config if it existed
     if [ -d /tmp/onyx/config/ ]; then
+        rm -rf "$INSTALL_DIR/config/"
         mv /tmp/onyx/config/ "$INSTALL_DIR/config/"
         rm -rf /tmp/onyx/config/
     fi
