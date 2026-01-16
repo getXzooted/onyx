@@ -82,3 +82,18 @@ EOF
 
     return 0
 }
+
+
+function show_usage() {
+    echo -e "\n${BOLD}Onyx Gateway${NC} - Privacy Focused Router"
+    echo -e "Usage: sudo onyx [COMMAND]"
+    echo ""
+    echo -e "${BOLD}Commands:${NC}"
+    echo -e "  ${GREEN}install${NC}    bootstrap  -> Installs all dependencies and software."
+    echo -e "  ${GREEN}provision${NC}  configure  -> Ingests keys and locks down the system."
+    echo -e "  ${GREEN}config${NC}     update     -> Re-applies settings from onyx.yml."
+    echo -e "  ${GREEN}status${NC}     check      -> Shows VPN connection and security status."
+    echo -e "  ${GREEN}network${NC}    [cmd]      -> Managed Desired State Security (audit, repair, panic)."
+    echo -e "  ${GREEN}firmware${NC}   update     -> Pulls latest code while preserving .yml configs."
+    echo ""
+}
