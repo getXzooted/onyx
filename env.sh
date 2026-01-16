@@ -2,9 +2,6 @@
 # CORE: Environment Loader
 # Purpose: Establishes paths and loads foundational libraries.
 
-# 1. Fallback for standard installation
-[[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
-
 # 2. Initialize Variables
 if [ ! -f "$ONYX_ROOT/vars.sh" ]; then
     echo "CRITICAL ERROR: Variables file not found at $ONYX_ROOT/vars.sh"
