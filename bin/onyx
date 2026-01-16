@@ -7,12 +7,18 @@
 
 # 1. ESTABLISH ROOT CONTEXT
 # We use readlink to find the actual project folder, even if this script is a symlink.
-CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
-ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+if [ -d "/opt/onyx" ]; then
+    export ONYX_ROOT="/opt/onyx"
+else
+    # Fallback to dynamic detection for development/custom installs
+    CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
+    # If the script is in bin/, we need to go up one level to reach the root
+    export ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
+fi
 
 # If dynamic detection failed (root is empty or root), force the standard path
 if [[ -z "$ONYX_ROOT" ]] || [[ "$ONYX_ROOT" == "/" ]]; then
-    ONYX_ROOT="/opt/onyx"
+    export ONYX_ROOT="/opt/onyx"
 fi
 
 # 2. LOAD ENVIRONMENT
