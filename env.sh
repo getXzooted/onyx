@@ -2,6 +2,18 @@
 # CORE: Environment Loader
 # Purpose: Establishes paths and loads foundational libraries.
 
+# 1. Fallback for standard installation
+[[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
+
+# 2. Initialize Variables
+source "$ONYX_ROOT/vars.sh"
+
+# 3. Load Global Foundation
+source "$ONYX_ROOT/core/functions.sh"
+source "$ONYX_ROOT/core/logger.sh"
+
+# 4. Load Source Dependencies 
+
 # Load Functions Library
 if [ -f "$CORE_DIR/functions.sh" ]; then
     source "$CORE_DIR/functions.sh"
@@ -26,16 +38,6 @@ if [ -f "$CORE_DIR/config_parser.sh" ]; then
 else
     log_warning "Config parser not found. Running with defaults."
 fi
-
-# 2. Fallback for standard installation
-[[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
-
-# 3. Load Global Foundation
-source "$ONYX_ROOT/core/functions.sh"
-source "$ONYX_ROOT/core/logger.sh"
-
-# 4. Initialize Variables
-source "$ONYX_ROOT/vars.sh"
 
 # 5. Discover Hardware and Enroll
 # source "$ONYX_ROOT/modules/network/discovery.sh"
