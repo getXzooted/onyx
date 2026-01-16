@@ -39,7 +39,7 @@ if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     # Restore the backup config if it existed
     if [ -d /tmp/onyx/config/ ]; then
         rm -rf "$INSTALL_DIR/config/"
-        mv /tmp/onyx/config/ "$INSTALL_DIR/config/"
+        mv /tmp/onyx/config/ "$INSTALL_DIR"
         rm -rf /tmp/onyx/config/
     fi
 
@@ -56,7 +56,7 @@ if [ ! -L "/usr/local/bin/onyx" ]; then
 fi
 
 # 5. If missing or incorrect, install the Go binary:
-if yq --version &>/dev/null && [ "$(yq --version | cut -d' ' -f4 | cut -d'.' -f1)" -lt 4 ]; then
+if ! command -v yq &>/dev/null || [ "$(yq --version | cut -d' ' -f4 | cut -d'.' -f1)" -lt 4 ]; then
     wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
     chmod +x /usr/local/bin/yq
 fi
