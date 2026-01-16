@@ -17,7 +17,11 @@ if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
     
     # Backup existing config if it exists before copying
     if [ -d "$INSTALL_DIR/config/" ]; then
-        mkdir -p /tmp/onyx/config/
+        if [ ! -d /tmp/onyx/config/ ]; then
+            mkdir -p /tmp/onyx/config/
+        else
+            rm -rf /tmp/onyx/config/
+        fi
         mv "$INSTALL_DIR/config/" /tmp/onyx/config/
     fi
 
