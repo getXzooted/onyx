@@ -10,34 +10,17 @@
 CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
 ONYX_ROOT="$(dirname "$(dirname "$CURRENT_SCRIPT_PATH")")"
 
-# --- FALLBACK FOR SYSTEMD ---
 # If dynamic detection failed (root is empty or root), force the standard path
 if [[ -z "$ONYX_ROOT" ]] || [[ "$ONYX_ROOT" == "/" ]]; then
     ONYX_ROOT="/opt/onyx"
 fi
-# ----------------------------
 
-CORE_DIR="$ONYX_ROOT/core"
-MODULES_DIR="$ONYX_ROOT/modules"
-
-source "$ONYX_ROOT/env.sh"
-
-# 2. LOAD DEPENDENCIES
-# Logger is required for all scripts
-if [ -f "$CORE_DIR/logger.sh" ]; then
-    source "$CORE_DIR/logger.sh"
-else
-    echo "CRITICAL ERROR: Logger not found at $CORE_DIR/logger.sh"
+# 2. LOAD ENVIRONMENT
+if [ ! -f "$ONYX_ROOT/env.sh" ]; then
+    echo "CRITICAL ERROR: Environment file not found at $ONYX_ROOT/env.sh"
     exit 1
-fi
-
-# Load Config Parser to read onyx.yml
-if [ -f "$CORE_DIR/config_parser.sh" ]; then
-    source "$CORE_DIR/config_parser.sh"
-    # Run the load function immediately
-    load_config
 else
-    log_warning "Config parser not found. Running with defaults."
+    source "$ONYX_ROOT/env.sh"
 fi
 
 # 3. ROOT CHECK
@@ -46,187 +29,11 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# 4. USAGE MENU
-function show_usage() {
-    echo -e "\n${BOLD}Onyx Gateway${NC} - Privacy Focused Router"
-    echo -e "Usage: sudo onyx [COMMAND]"
-    echo ""
-    echo -e "${BOLD}Commands:${NC}"
-    echo -e "  ${GREEN}install${NC}    bootstrap  -> Installs all dependencies and software."
-    echo -e "  ${GREEN}provision${NC}  configure  -> Ingests keys and locks down the system."
-    echo -e "  ${GREEN}config${NC}     update     -> Re-applies settings from onyx.yml."
-    echo -e "  ${GREEN}status${NC}     check      -> Shows VPN connection and security status."
-    echo -e "  ${GREEN}network${NC}    [cmd]      -> Managed Desired State Security (audit, repair, panic)."
-    echo -e "  ${GREEN}firmware${NC}   update     -> Pulls latest code while preserving .yml configs."
-    echo ""
-}
-
-# 5. COMMAND ROUTER
-COMMAND="$1"
-
-case "$COMMAND" in
-
-    boot)
-        # Check if the boot script exists
-        BOOT_SCRIPT="$ONYX_ROOT/lib/boot/boot.sh"
-        
-        if [ -f "$BOOT_SCRIPT" ]; then
-            source "$BOOT_SCRIPT"
-        else
-            log_error "Boot module not found at $BOOT_SCRIPT"
-            log_info "Please ensure lib/boot/boot.sh exists."
-        fi
-        
-        ;;
-
-    install)
-        # Check if the installation script exists
-        STATUS_SCRIPT="$ONYX_ROOT/lib/install/install.sh"
-        
-        if [ -f "$STATUS_SCRIPT" ]; then
-            source "$STATUS_SCRIPT"
-        else
-            log_error "Install module not found at $STATUS_SCRIPT"
-            log_info "Please ensure lib/install/install.sh exists."
-        fi
-        
-        ;;
-        
-    provision)
-        # Check if the provisioning script exists
-        STATUS_SCRIPT="$ONYX_ROOT/lib/provision/provision.sh"
-
-        if [ -f "$STATUS_SCRIPT" ]; then
-            source "$STATUS_SCRIPT"
-        else
-            log_error "Install module not found at $STATUS_SCRIPT"
-            log_info "Please ensure lib/provision/provision.sh exists."
-        fi
-        ;;
-
-    config)
-        # Check if the config script exists
-        STATUS_SCRIPT="$ONYX_ROOT/lib/config/config.sh"
-
-        if [ -f "$STATUS_SCRIPT" ]; then
-            source "$STATUS_SCRIPT"
-        else
-            log_error "Install module not found at $STATUS_SCRIPT"
-            log_info "Please ensure lib/config/config.sh exists."
-        fi
-        ;;
-
-    firmware)
-        # Check if the firmware script exists
-        STATUS_SCRIPT="$ONYX_ROOT/lib/firmware/firmware.sh"
-
-        if [ -f "$STATUS_SCRIPT" ]; then
-            # Pass all flags (e.g., --fresh-hard) to the script
-            source "$STATUS_SCRIPT" "${@:2}"
-        else
-            log_error "Firmware module not found at $STATUS_SCRIPT"
-            log_info "Please ensure lib/firmware/firmware.sh exists."
-        fi
-        ;;
-
-    status)
-        # 1. Check if the diagnostic tool exists
-        STATUS_SCRIPT="$ONYX_ROOT/lib/status/onyx_status.sh"
-
-        if [ -f "$STATUS_SCRIPT" ]; then
-            # 2. Handoff control to the diagnostic engine
-            # We execute it directly (instead of source) to keep its variables isolated
-            sudo "$STATUS_SCRIPT"
-        else
-            log_error "Status module not found at $STATUS_SCRIPT"
-            log_info "Please ensure lib/status/onyx_status.sh exists and is executable."
-        fi
-        ;;
-
-    vlan)
-        STATUS_SCRIPT="$ONYX_ROOT/lib/vlan/vlan.sh"
-        if [ -f "$STATUS_SCRIPT" ]; then
-            source "$STATUS_SCRIPT" "${@:2}"
-        else
-            log_error "VLAN module not found."
-        fi
-        ;;
-
-    update)
-        log_header "RUNNING UPDATE MANAGER"
-        source "$ONYX_ROOT/core/update.sh"
-        core_update "$2"
-        ;;
-
-    # === INSTALL DASHBOARD ===
-    dashboard)
-        source "$MODULES_DIR/system/dashboard.sh"
-        system_install_dashboard
-        ;;
-
-    # === RUN MONITOR ===
-    monitor)
-        # Verify it is installed before trying to run it
-        if [ -f "/usr/local/bin/onyx-dash" ]; then
-            /usr/local/bin/onyx-dash
-        else
-            log_error "Dashboard not found. Run 'sudo onyx dashboard' first."
-        fi
-        ;;
-
-    ssh)
-        case "$2" in
-            on|enable)
-                systemctl enable --now ssh
-                log_success "SSH Service Enabled."
-                ;;
-            off|disable)
-                systemctl disable --now ssh
-                log_warning "SSH Service Disabled. Remote access locked."
-                ;;
-            *)
-                echo "Usage: sudo onyx ssh [on|off]"
-                ;;
-        esac
-        ;;
-
-    network)
-        source "$ONYX_ROOT/lib/network/network.sh"
-        case "$2" in
-            repair)  repair_state ;;
-            panic)   panic_lock ;;
-            build)   build_rule "${@:3}" ;;
-            delete)  delete_rule "${@:3}" ;;
-            toggle)  toggle_rule "$3" "$4" ;;
-            ""|audit) ;;
-            *)       echo "Usage: sudo onyx audit {repair|panic|build|delete|toggle}" ;;
-        esac
-        ;;
-
-    qr)
-        log_header "WIREGUARD ONBOARDING (QR)"
-        if [ -f "/etc/wireguard/wg0.conf" ]; then
-            # Displays the Pi's VPN config as a QR code in the terminal
-            qrencode -t ansiutf8 < /etc/wireguard/wg0.conf
-            log_info "Scan this with the WireGuard mobile app to clone the tunnel."
-        else
-            log_error "No WireGuard config found at /etc/wireguard/wg0.conf"
-        fi
-        ;;
-
-    graph)
-        # Check for dependencies
-        if ! command -v nload &>/dev/null; then
-            apt-get install -y nload bmon &>/dev/null
-        fi
-
-        # The "Live" View: ASCII Graphs of the WireGuard Tunnel
-        # This flexes on the commercial GUIs by being 100% SSH-native.
-        nload -u M -i 1024 -o 1024 wg0
-        ;;
-
-    *)
-        show_usage
-        exit 1
-        ;;
-esac
+# 4. COMMAND ROUTER
+if [ -f "$LIB_DIR/onyx/commands.sh" ]; then
+    source "$LIB_DIR/onyx/commands.sh"
+else
+    log_error "Onyx commands module not found at $LIB_DIR/onyx/commands.sh"
+    log_info "Please ensure lib/onyx/commands.sh exists."
+    exit 1
+fi
