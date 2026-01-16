@@ -6,13 +6,14 @@
 [[ -z "$ONYX_ROOT" || "$ONYX_ROOT" == "/" ]] && export ONYX_ROOT="/opt/onyx"
 
 # 2. Initialize Variables
-source "$ONYX_ROOT/vars.sh"
+if [ ! -f "$ONYX_ROOT/vars.sh" ]; then
+    echo "CRITICAL ERROR: Variables file not found at $ONYX_ROOT/vars.sh"
+    exit 1
+else
+    source "$ONYX_ROOT/vars.sh"
+fi
 
-# 3. Load Global Foundation
-source "$ONYX_ROOT/core/functions.sh"
-source "$ONYX_ROOT/core/logger.sh"
-
-# 4. Load Source Dependencies 
+# 3. Load Source Dependencies 
 
 # Load Functions Library
 if [ -f "$CORE_DIR/functions.sh" ]; then
