@@ -36,10 +36,10 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 4. COMMAND ROUTER
-if [ -f "$LIB_DIR/onyx/commands.sh" ]; then
-    source "$LIB_DIR/onyx/commands.sh"
+if [ -f "$MODULES_DIR/system/command.sh" ]; then
+    source "$MODULES_DIR/system/command.sh"
 else
-    log_error "Onyx commands module not found at $LIB_DIR/onyx/commands.sh"
-    log_info "Please ensure lib/onyx/commands.sh exists."
+    log_error "Onyx commands module not found at $MODULES_DIR/system/command.sh"
+    log_info "Please ensure modules/system/command.sh exists."
     exit 1
 fi
