@@ -31,7 +31,7 @@ function network_safety_net() {
 #!/bin/bash
 # ONYX Boot-time Safety Net
 source "$ONYX_ROOT/env.sh"
-source "$ONYX_ROOT/lib/hardening_execution.sh"
+source "$MODULES_DIR/network/hardening_execution.sh"
 
 # 1. Flush and Set Default Deny
 iptables -P INPUT DROP
