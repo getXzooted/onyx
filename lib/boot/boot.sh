@@ -1,48 +1,19 @@
 #!/bin/bash
-# CORE: Onyx Boot Script
-# Handles the boot phase of Onyx Gateway installation.
+# CORE: ONYX BOOTSTRAP SCRIPT
+# Purpose: Initializes the Onyx Gateway during system boot.
 
-check_root
-check_env
+function onyx_boot() {
+    # Check if the boot script exists
+    BOOT_SCRIPT="$MODULES_DIR/system/boot.sh"
 
-log_header " --- BOOTING SYSTEM --- "
+    if [ -f "$BOOT_SCRIPT" ]; then
+        log_header "--- BOOTSTRAPPING ONYX GATEWAY ---"
+        source "$BOOT_SCRIPT"
+    else
+        log_error "Boot module not found at $BOOT_SCRIPT"
+        log_info "Please ensure $MODULES_DIR/system/boot.sh exists."
+        return 1
+    fi
 
-# --- PERSISTENT MEMORY LOCK (Post-Reboot) ---
-# Ensures hardware is re-locked on every boot to fight Trixie's auto-generators
-if [[ "$(zramctl --noheadings --output ALGORITHM /dev/zram0 2>/dev/null)" != "lz4" ]]; then
-    log_info "Memory Guard: Fixing hardware algorithm mismatch..."
-        
-    # Release locks
-    sudo systemctl stop rpi-swap zramswap 2>/dev/null
-    sudo systemctl mask rpi-swap zramswap 2>/dev/null
-    sudo swapoff -a 2>/dev/null
-        
-    # Nuclear Release and Reload
-    sudo modprobe -r zram 2>/dev/null
-    sudo modprobe zram num_devices=1
-        
-    # Dynamic Scaling (50% RAM)
-    TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
-    ZRAM_SIZE=$((TOTAL_MEM / 2))M
-        
-    # Hardware Inject
-    sudo zramctl --find --size "$ZRAM_SIZE" --algorithm lz4
-    sudo mkswap /dev/zram0 && sudo swapon /dev/zram0 -p 100
-    log_success "Memory Guard: Hardware Locked ($ZRAM_SIZE @ lz4)."
-fi
-
-log_step "Checking for new configuration files on boot partition..."
-source "$ONYX_ROOT/lib/provision/ingest.sh"
-
-if [ $? -eq 1]; then
-    log_info "New configuration detected. Provisioning and Configuring now..."
-
-    log_step "Provisioning Network"
-    $ONYX_ROOT/bin/onyx provision
-
-    log_step "Configuring Network"
-    $ONYX_ROOT/bin/onyx config
-fi
-
-log_step "Hardening Network"
-$ONYX_ROOT/bin/onyx network repair
+    return 0
+}
