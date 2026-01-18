@@ -8,7 +8,7 @@ function onyx_config() {
         CONFIG_SCRIPT="$MODULES_DIR/system/config.sh"
 
         if [ -f "$CONFIG_SCRIPT" ]; then
-            log_header " --- CONFIGURING ONYX SYSTEMS --- "
+            log_header " --- CONFIGURING ONYX --- "
             source "$CONFIG_SCRIPT"
             return 0
         else
