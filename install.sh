@@ -1,5 +1,6 @@
 #!/bin/bash
-# ONYX INSTALLER - The entry point. Sets up the environment and triggers the CLI.
+# CORE: ONYX INSTALLER
+# Purpose: The entry point. Sets up the environment and triggers the CLI.
 
 # 1. Detect Path
 USER_ID=${SUDO_USER:-$USER}
@@ -13,40 +14,13 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 3. Move/Clone to /opt/onyx (The Standard Location) - If we are not already in /opt/onyx, we copy ourselves there.
-if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then
-    
-    # Backup existing config if it exists before copying
-    if [ -d "$INSTALL_DIR/config/" ]; then
-        if [ ! -d /tmp/onyx/config/ ]; then
-            mkdir -p /tmp/onyx/config/
-        else
-            rm -rf /tmp/onyx/config/
-        fi
-        mv "$INSTALL_DIR/config/" /tmp/onyx/config/
-    fi
-
-    # Remove existing installation
-    if [ -d "$INSTALL_DIR" ]; then
-        echo "Removing existing Onyx installation at $INSTALL_DIR..."
-        rm -rf "$INSTALL_DIR"
-    fi
-
-    # Install Onyx
-    echo "Installing Onyx to $INSTALL_DIR..."
-    mkdir -p "$INSTALL_DIR"
-    cp -r . "$INSTALL_DIR"
-    
-    # Restore the backup config if it existed
-    if [ -d /tmp/onyx/config/ ]; then
-        rm -rf "$INSTALL_DIR/config/"
-        mv /tmp/onyx/config/ "$INSTALL_DIR"
-        rm -rf /tmp/onyx/config/
-    fi
-
-    # Fix permissions
-    chmod +x "$INSTALL_DIR/bin/onyx"
-    chmod +x "$INSTALL_DIR/install.sh"
-    find "$INSTALL_DIR" -name "*.sh" -exec chmod +x {} \;
+DEPLOY_MODULE="./modules/install/deploy.sh"
+if [ -f "$DEPLOY_MODULE" ]; then
+    source "$DEPLOY_MODULE"
+    onyx_deploy
+else
+    echo "CRITICAL ERROR: Deployment module not found at $DEPLOY_MODULE"
+    exit 1
 fi
 
 # 4. Symlink the CLI - This allows you to type 'sudo onyx' from anywhere.
