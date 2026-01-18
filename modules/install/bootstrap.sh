@@ -29,5 +29,3 @@ EOF
     systemctl enable onyx.service
     log_success "Controller armed. Initial entry: 'onyx boot'"
 }
-
-bootstrap
