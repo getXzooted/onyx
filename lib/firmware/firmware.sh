@@ -8,7 +8,7 @@ function onyx_firmware() {
         FIRMWARE_SCRIPT="$MODULES_DIR/system/firmware.sh"
 
         if [ -f "$FIRMWARE_SCRIPT" ]; then
-            log_header "--- ONYX FIRMWARE UPDATE ---"
+            log_header "--- UPDATING FIRMWARE ---"
             source "$FIRMWARE_SCRIPT" "${@:2}" # Pass all flags (e.g., --fresh-hard) to the script
             return 0
         else
