@@ -20,6 +20,7 @@ if [ ! -f "$MODULES_DIR/install/bootstrap.sh" ]; then
 else
     log_step "Setting up bootstrap service..."
     source "$MODULES_DIR/install/bootstrap.sh"
+    bootstrap
 fi
 
 # 3. Auto-Provisioning Service (The Boot Watcher)
