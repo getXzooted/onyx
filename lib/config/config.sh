@@ -5,7 +5,7 @@
 function onyx_config() {
 
         # Check if the config script exists
-        CONFIG_SCRIPT="$MODULES_DIR/system/config.sh"
+        local CONFIG_SCRIPT="$MODULES_DIR/system/config.sh"
 
         if [ -f "$CONFIG_SCRIPT" ]; then
             log_header " --- CONFIGURING ONYX --- "
