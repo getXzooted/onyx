@@ -5,7 +5,7 @@
 function onyx_firmware() {
 
         # Check if the firmware script exists
-        FIRMWARE_SCRIPT="$MODULES_DIR/system/firmware.sh"
+        local FIRMWARE_SCRIPT="$MODULES_DIR/system/firmware.sh"
 
         if [ -f "$FIRMWARE_SCRIPT" ]; then
             log_header "--- UPDATING FIRMWARE ---"
