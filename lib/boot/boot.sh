@@ -1,6 +1,6 @@
 #!/bin/bash
-# CORE: ONYX BOOTSTRAP SCRIPT
-# Purpose: Initializes the Onyx Gateway during system boot.
+# CORE: ONYX BOOT SCRIPT
+# Purpose: Initializes Onyx during system boot.
 
 function onyx_boot() {
     # Check if the boot script exists
