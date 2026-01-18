@@ -1,33 +1,57 @@
 #!/bin/bash
-# lib/install/bootstrap.sh
+# MODULE: System Bootstrap
+# Installs core dependencies and updates the OS.
 
-function bootstrap() {
-    log_header "ARMING SOVEREIGN CONTROLLER"
+# Load Logger (This assumes the script is run by the main CLI, but we add a check)
+if [ -z "$ONYX_ROOT" ]; then
+    echo "Error: This module must be run via the Onyx CLI."
+    exit 1
+fi
+
+function system_bootstrap() {
+    log_header "SYSTEM BOOTSTRAP"
+
+    # 1. Update Repositories
+    log_step "Updating package lists..."
+    apt-get update -qq
     
-    local SERVICE_FILE="/etc/systemd/system/onyx.service"
+    # 2. Install Core Dependencies
+    # - bc: Arbitrary precision calculator
+    # - wireguard: VPN protocol
+    # - iptables: Firewall management
+    # - unbound: Recursive DNS resolver
+    # - curl/git: Utilities
+    # - qrencode: For generating QR codes in terminal (cool feature for later)
+    # - dnsmasq: Lightweight DHCP and DNS server
+    # - hostapd: WiFi access point management
+    # - macchanger: Change MAC addresses for privacy
+    # - ethtool: Ethernet device settings
+    # - xtables-addons-common: Additional iptables modules (when kernel 6.12 supported)
+    DEPENDENCIES=(bc wireguard iptables unbound curl git qrencode dnsmasq hostapd macchanger ethtool )
     
-    log_step "Creating permanent /etc/systemd/system/onyx.service..."
-    cat <<EOF > "$SERVICE_FILE"
-[Unit]
-Description=Onyx Sovereign Gateway Controller
-After=network-online.target local-fs.target
-Wants=network-online.target
+    log_step "Installing dependencies: ${DEPENDENCIES[*]}..."
+    
+    # DEBIAN_FRONTEND=noninteractive prevents popups during install
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${DEPENDENCIES[@]}"
 
-[Service]
-Type=oneshot
-ExecStart=/usr/local/bin/onyx boot
-StandardOutput=journal+console
-StandardError=journal+console
-User=root
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    systemctl daemon-reload
-    systemctl enable onyx.service
-    log_success "Controller armed. Initial entry: 'onyx boot'"
+    if [ $? -eq 0 ]; then
+        log_success "All core dependencies installed."
+    else
+        log_error "Failed to install dependencies. Check internet connection."
+        exit 1
+    fi
+    
+    # 3. Disable unwanted services (Bluetooth) to save power/security
+    log_step "Disabling Bluetooth service..."
+    systemctl disable --now bluetooth &> /dev/null
+    systemctl disable --now hciuart &> /dev/null
+    
+    # Add to boot config if not already there
+    if ! grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt; then
+        echo "dtoverlay=disable-bt" >> /boot/firmware/config.txt
+        log_success "Bluetooth disabled in boot config."
+    fi
 }
 
-bootstrap
+# Run the function
+system_bootstrap
