@@ -5,7 +5,7 @@
 function onyx_boot() {
     
     # Check if the boot script exists
-    BOOT_SCRIPT="$MODULES_DIR/system/boot.sh"
+    local BOOT_SCRIPT="$MODULES_DIR/system/boot.sh"
 
     if [ -f "$BOOT_SCRIPT" ]; then
         log_header "--- BOOTSTRAPPING ONYX ---"
