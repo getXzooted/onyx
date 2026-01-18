@@ -9,15 +9,33 @@ log_header "--- STARTING INSTALLATION ---"
 
 # 1. Install Dependencies
 log_info "Phase 1: System Dependencies"
-source "$ONYX_ROOT/lib/install/dependencies.sh"
+if [ ! -f "$ONYX_ROOT/lib/install/dependencies.sh" ]; then
+    log_error "Missing dependencies script!"
+    exit 1
+else
+    log_step "Installing core dependencies..."
+    source "$ONYX_ROOT/lib/install/dependencies.sh"
+fi
 
 # 2. Install Bootstrap Service
 log_info "Phase 2: Bootstrap Controller Service"
-source "$ONYX_ROOT/lib/install/bootstrap.sh"
+if [ ! -f "$ONYX_ROOT/lib/install/bootstrap.sh" ]; then
+    log_error "Missing bootstrap script!"
+    exit 1
+else
+    log_step "Setting up bootstrap service..."
+    source "$ONYX_ROOT/lib/install/bootstrap.sh"
+fi
 
 # 3. Auto-Provisioning Service (The Boot Watcher)
 log_info "Phase 3: Auto-Provisioning Service"
-source "$ONYX_ROOT/lib/provision/ingest.sh"
+if [ ! -f "$ONYX_ROOT/lib/provision/ingest.sh" ]; then
+    log_error "Missing ingest script!"
+    exit 1
+else
+    log_step "Setting up auto-provisioning service..."
+    source "$ONYX_ROOT/lib/provision/ingest.sh"
+fi
 
 # 4. Asset Synchronization & Network Hardening
 log_info "Phase 4: Setup Assets & Network Hardening"
