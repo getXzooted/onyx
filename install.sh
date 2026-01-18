@@ -16,6 +16,7 @@ fi
 # 3. Move/Clone to /opt/onyx (The Standard Location) - If we are not already in /opt/onyx, we copy ourselves there.
 DEPLOY_MODULE="./modules/install/deploy.sh"
 if [ -f "$DEPLOY_MODULE" ]; then
+    echo "Deploying Onyx to $INSTALL_DIR..."
     source "$DEPLOY_MODULE"
     onyx_deploy
 else
@@ -29,8 +30,9 @@ if [ ! -L "/usr/local/bin/onyx" ]; then
     ln -s "$INSTALL_DIR/bin/onyx" /usr/local/bin/onyx
 fi
 
-# 5. If missing or incorrect, install the Go binary:
+# 5. If missing or incorrect, install the Go binary: potential to be step 3
 if ! command -v yq &>/dev/null || [ "$(yq --version | cut -d' ' -f4 | cut -d'.' -f1)" -lt 4 ]; then
+    echo "Installing yq YAML processor..."
     wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm -O /usr/local/bin/yq
     chmod +x /usr/local/bin/yq
 fi
