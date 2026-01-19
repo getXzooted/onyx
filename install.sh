@@ -39,4 +39,4 @@ fi
 
 # 6. Handover to the CLI Controller
 echo "Handing over to Onyx Controller..."
-/usr/local/bin/onyx install
+# /usr/local/bin/onyx install
