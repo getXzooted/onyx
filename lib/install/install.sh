@@ -8,7 +8,7 @@ function onyx_install() {
     local INSTALL_SCRIPT="$LIB_DIR/install/install.sh"
 
     if [ -f "$INSTALL_SCRIPT" ]; then
-        log_header "--- STARTING INSTALLATION ---"
+        log_header " --- STARTING INSTALLATION --- "
         source "$INSTALL_SCRIPT"
         return 0
     else
