@@ -41,6 +41,12 @@ function audit_state() {
 
 function repair_state() {
     log_header "ONYX SECURITY ENFORCEMENT"
+
+    # 1. THE NUCLEAR FLUSH: Wipe existing rules to guarantee order
+    log_step "Flushing chains to prevent rule-drift disorder..."
+    iptables -F
+    iptables -t nat -F
+    iptables -t mangle -F
     
     # 1. Extract keys in their exact file order
     # Using '.. | path' ensures we traverse the YAML tree top-to-bottom
