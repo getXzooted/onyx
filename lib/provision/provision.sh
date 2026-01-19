@@ -8,7 +8,7 @@ function onyx_provision() {
     local PROVISION_SCRIPT="$MODULES_DIR/provision/provision.sh"
 
     if [ -f "$PROVISION_SCRIPT" ]; then
-        log_header "--- PROVISIONING ONYX ---"
+        log_header " --- PROVISIONING ONYX --- "
         source "$PROVISION_SCRIPT"
         return 0
     else
