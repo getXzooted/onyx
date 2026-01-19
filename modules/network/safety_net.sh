@@ -19,14 +19,13 @@ function network_safety_net() {
         return 1
     fi
 
-    TARGET_SCRIPT="/usr/local/bin/safety-net.sh"
-    SERVICE_FILE="/etc/systemd/system/safety-net.service"
+    local TARGET_SCRIPT="/usr/local/bin/safety-net.sh"
+    local SERVICE_FILE="/etc/systemd/system/safety-net.service"
+    local TIMER_FILE="/etc/systemd/system/safety-net.timer"
 
     log_step "Generating firewall logic at $TARGET_SCRIPT..."
 
     # 2. GENERATE MINIMAL ENFORCER SCRIPT
-    # Instead of a massive block of strings, this script now sources 
-    # your core Onyx libraries to apply rules dynamically.
     cat <<EOF > "$TARGET_SCRIPT"
 #!/bin/bash
 # ONYX Boot-time Safety Net
@@ -57,14 +56,33 @@ After=network.target
 [Service]
 Type=oneshot
 ExecStart=$TARGET_SCRIPT
+StandardOutput=journal+console
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
+    # 4. THE TIMER: Defines WHEN to run
+    log_step "Creating Sentinel Timer ($REPAIR_INTERVAL)..."
+    cat <<EOF > "$TIMER_FILE"
+[Unit]
+Description=Run Onyx Safety Net Enforcement Periodically
+
+[Timer]
+# Wait 5 minutes after boot before the first run
+OnBootSec=5min
+# Repeat every interval defined in onyx.yml
+OnUnitActiveSec=$REPAIR_INTERVAL
+Unit=safety-net.service
+
+[Install]
+WantedBy=timers.target
+EOF
+
     systemctl daemon-reload
     systemctl enable safety-net &> /dev/null
+    systemctl enable --now safety-net.timer &> /dev/null
     log_success "Safety Net refactored and service enabled."
 }
 
