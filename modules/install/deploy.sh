@@ -20,7 +20,7 @@ function onyx_deploy() {
                 rm -rf $BACKUP_PATH
             fi
             echo "Backing up config from $INSTALL_DIR/config/ to $BACKUP_PATH..."
-            mv "$INSTALL_DIR/config/" $BACKUP_PATH
+            mv "$INSTALL_DIR/config" $BACKUP_PATH
         fi
 
         # 2. Remove existing installation
@@ -37,7 +37,7 @@ function onyx_deploy() {
         # 4. Restore the backup config if it existed
         if [ -d $BACKUP_PATH ]; then
             echo "Restoring configuration from backup..."
-            rm -rf "$INSTALL_DIR/config/"
+            rm -rf "$INSTALL_DIR/config"
             mv $BACKUP_PATH "$INSTALL_DIR"
             rm -rf $BACKUP_PATH
         fi
