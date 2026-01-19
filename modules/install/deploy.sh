@@ -13,7 +13,7 @@ function onyx_deploy() {
         # 1. Backup existing config if it exists before copying
         if [[ "$MODE" == "backup" ]] && [ -d "$INSTALL_DIR/config" ]; then
             if [ ! -d $BACKUP_PATH ]; then
-            #    echo "Backing up existing Onyx configuration..."
+                echo "Backing up existing Onyx configuration..."
             #    mkdir -p $BACKUP_PATH
             else
                 echo "Removing old backup at $BACKUP_PATH..."
