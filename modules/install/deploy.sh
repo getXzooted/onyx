@@ -5,7 +5,7 @@
 function onyx_deploy() {
     
     local MODE="${1:-backup}"
-    local BACKUP_PATH="/tmp/onyx/config/"
+    local BACKUP_PATH="/tmp/onyx/"
 
     # Only proceed if we aren't already running from the target directory
     if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then 
@@ -38,7 +38,7 @@ function onyx_deploy() {
         if [ -d $BACKUP_PATH ]; then
             echo "Restoring configuration from backup..."
             rm -rf "$INSTALL_DIR/config/"
-            mv $BACKUP_PATH "$INSTALL_DIR/config/"
+            mv $BACKUP_PATH "$INSTALL_DIR"
             rm -rf $BACKUP_PATH
         fi
 
