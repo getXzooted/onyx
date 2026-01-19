@@ -5,7 +5,7 @@
 function onyx_install() {
     
     # Check if the installation script exists
-    local INSTALL_SCRIPT="$LIB_DIR/install/install.sh"
+    local INSTALL_SCRIPT="$MODULES_DIR/install/install.sh"
 
     if [ -f "$INSTALL_SCRIPT" ]; then
         log_header " --- STARTING INSTALLATION --- "
