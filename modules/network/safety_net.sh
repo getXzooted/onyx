@@ -29,6 +29,7 @@ function network_safety_net() {
     cat <<EOF > "$TARGET_SCRIPT"
 #!/bin/bash
 # ONYX Boot-time Safety Net
+ONYX_ROOT="/opt/onyx"
 source "$ONYX_ROOT/env.sh"
 source "$MODULES_DIR/network/hardening_execution.sh"
 
