@@ -8,7 +8,7 @@ function onyx_status() {
     local STATUS_SCRIPT="$MODULES_DIR/system/status.sh"
 
     if [ -f "$STATUS_SCRIPT" ]; then
-        log_header " --- ONYX STATUS SCRIPT --- "
+        log_header " --- ONYX STATUS --- "
         sudo "$STATUS_SCRIPT" # We execute it directly (instead of source) to keep its variables isolated
         return $?
     else
