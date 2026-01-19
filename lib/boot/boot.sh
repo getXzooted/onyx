@@ -8,7 +8,7 @@ function onyx_boot() {
     local BOOT_SCRIPT="$MODULES_DIR/system/boot.sh"
 
     if [ -f "$BOOT_SCRIPT" ]; then
-        log_header "--- BOOTSTRAPPING ONYX ---"
+        log_header " --- BOOTING ONYX --- "
         source "$BOOT_SCRIPT"
         return 0
     else
