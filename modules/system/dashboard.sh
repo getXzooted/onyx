@@ -128,3 +128,5 @@ EOF
     
     log_success "Dashboard Installed."
 }
+
+system_install_dashboard
