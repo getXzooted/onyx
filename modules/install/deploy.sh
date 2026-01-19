@@ -6,6 +6,7 @@ function onyx_deploy() {
     
     local MODE="${1:-backup}"
     local BACKUP_PATH="/tmp/onyx/config"
+    local INSTALL_DIR="/opt/onyx"
 
     # Only proceed if we aren't already running from the target directory
     if [[ "$CURRENT_DIR" != "$INSTALL_DIR" ]]; then 
