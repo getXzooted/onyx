@@ -72,7 +72,7 @@ fi
 audit_state
 
 # 7. Command Interface for Further Actions
-case "$2" in
+case "$1" in
     repair)  repair_state ;;
     panic)   panic_lock ;;
     build)   build_rule "${@:3}" ;;
