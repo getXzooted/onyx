@@ -42,13 +42,20 @@ function audit_state() {
 function repair_state() {
     log_header "ONYX SECURITY ENFORCEMENT"
 
-    # 1. THE NUCLEAR FLUSH: Wipe existing rules to guarantee order
+    # 1. THE FAIL-CLOSED LOCK: Set default policy to DROP before flushing
+    # This prevents internet access while we work.
+    log_step "Locking gates (Fail-Closed)..."
+    iptables -P INPUT DROP
+    iptables -P FORWARD DROP
+    iptables -P OUTPUT DROP
+
+    # 2. THE NUCLEAR FLUSH: Wipe existing rules to guarantee order
     log_step "Flushing chains to prevent rule-drift disorder..."
     iptables -F
     iptables -t nat -F
     iptables -t mangle -F
     
-    # 1. Extract keys in their exact file order
+    # 3. Extract keys in their exact file order
     # Using '.. | path' ensures we traverse the YAML tree top-to-bottom
     local KEYS=$(yq e '.. | select(tag == "!!bool" or tag == "!!str") | path | join(".")' "$HARDENING_YAML")
 
@@ -59,7 +66,7 @@ function repair_state() {
         # Get the intended state (true/false/value)
         local INTENT=$(yq e ".$KEY" "$HARDENING_YAML")
 
-        # 2. Sequential Execution
+        # Sequential Execution
         # We check if an apply_ function exists for this specific rule
         if declare -f "apply_$RULE_NAME" > /dev/null; then
             # Execute the rule. Because $KEYS is ordered, this happens line-by-line.
