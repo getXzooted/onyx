@@ -8,7 +8,7 @@ function onyx_network() {
     local NETWORK_SCRIPT="$MODULES_DIR/system/network.sh"
 
     if [ -f "$NETWORK_SCRIPT" ]; then
-        log_header "--- CONFIGURING NETWORK ---"
+        log_header " --- DISPLAYING NETWORK --- "
         source "$NETWORK_SCRIPT"
         return 0
     else
