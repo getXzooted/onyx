@@ -3,10 +3,10 @@
 # Handles the configuration phase of Onyx Gateway installation.
 
 # Check if a config file path is provided as an argument
-if [ -n "$2" ]; then
+if [ -n "$1" ]; then
         source "$MODULES_DIR/provision/ingest.sh"
         # Pass the file path to the ingest function
-        provision_ingest "$2"
+        provision_ingest "$1"
         exit $?
 fi
 
