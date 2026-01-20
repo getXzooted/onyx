@@ -31,6 +31,7 @@ if [ ! -f "$MODULES_DIR/provision/ingest.sh" ]; then
 else
     log_step "Setting up auto-provisioning service..."
     source "$MODULES_DIR/provision/ingest.sh"
+    exit 1
 fi
 
 # 4. Asset Synchronization & Network Hardening
