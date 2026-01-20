@@ -15,7 +15,7 @@ function onyx_deploy() {
         if [[ "$MODE" == "backup" ]] && [ -d "$INSTALL_DIR/config" ]; then
             if [ ! -d $BACKUP_PATH ]; then
                 echo "Backing up existing Onyx configuration..."
-            #    mkdir -p $BACKUP_PATH
+                mkdir -p $BACKUP_PATH
             else
                 echo "Removing old backup at $BACKUP_PATH..."
                 rm -rf $BACKUP_PATH
