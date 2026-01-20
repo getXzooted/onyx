@@ -50,6 +50,11 @@ EOF
     # 3. GENERATE SYSTEMD SERVICE
     log_step "Creating systemd service..."
     cat <<EOF > "$SERVICE_FILE"
+#!/bin/bash
+# ONYX Safety Net Timer Service
+ONYX_ROOT="/opt/onyx"
+source "$ONYX_ROOT/env.sh"
+
 [Unit]
 Description=Safety Net Firewall Rules
 After=network.target
@@ -65,16 +70,16 @@ WantedBy=multi-user.target
 EOF
 
     # 4. THE TIMER: Defines WHEN to run
-    log_step "Creating Sentinel Timer ($REPAIR_INTERVAL)..."
+    log_step "Creating Sentinel Timer (${ONYX_ENFORCEMENT_INTERVAL:-10min})..."
     cat <<EOF > "$TIMER_FILE"
 [Unit]
 Description=Run Onyx Safety Net Enforcement Periodically
 
 [Timer]
-# Wait 5 minutes after boot before the first run
-OnBootSec=5min
-# Repeat every interval defined in onyx.yml
-OnUnitActiveSec=$REPAIR_INTERVAL
+# Wait 5 minutes from the MOMENT the service is enabled/started
+OnActiveSec=5min
+# Thereafter, run every X minutes
+OnUnitActiveSec=${ONYX_ENFORCEMENT_INTERVAL:-10min}
 Unit=safety-net.service
 
 [Install]
