@@ -40,13 +40,15 @@ log_info "Phase 4: Setup Assets & Network Hardening"
 log_step "Provisioning Network"
 $ONYX_ROOT/bin/onyx provision
 
-exit 1
-
 log_step "Configuring Network"
 $ONYX_ROOT/bin/onyx config
 
+exit 1
+
 log_step "Hardening Network"
 $ONYX_ROOT/bin/onyx network repair
+
+exit 1
 
 # 5. We also reboot in case no drag-and-drop happens.
 log_info "System will reboot now to continue installation..."
