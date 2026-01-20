@@ -71,8 +71,6 @@ fi
 # 6. Final Audit Summary
 audit_state
 
-exit 1
-
 # 7. Command Interface for Further Actions
 case "$1" in
     repair)  repair_state ;;
