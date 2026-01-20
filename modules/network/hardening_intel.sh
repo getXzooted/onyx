@@ -42,6 +42,28 @@ function audit_state() {
 function repair_state() {
     log_header "ONYX SECURITY ENFORCEMENT"
 
+    # 1. ALLOW LOCALHOST & ESTABLISHED FIRST
+    # Doing this before the DROP policy prevents the deadlock
+    iptables -A INPUT -i lo -j ACCEPT
+    iptables -A OUTPUT -o lo -j ACCEPT
+    iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+    iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+    # 2. LOCK THE GATES
+    log_step "Locking gates (Fail-Closed)..."
+    iptables -P INPUT DROP
+    iptables -P FORWARD DROP
+    iptables -P OUTPUT DROP
+
+    # 3. FLUSH (The survival rules from step 1 stay active because they are in the chain)
+    log_step "Flushing chains..."
+    iptables -F
+    iptables -t nat -F
+    
+    # RE-ADD lo immediately after flush just to be 100% certain for the yq call
+    iptables -A INPUT -i lo -j ACCEPT
+    iptables -A OUTPUT -o lo -j ACCEPT
+
     # 1. THE FAIL-CLOSED LOCK: Set default policy to DROP before flushing
     # This prevents internet access while we work.
 #    log_step "Locking gates (Fail-Closed)..."
