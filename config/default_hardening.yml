@@ -1,0 +1,62 @@
+# /opt/onyx/config/hardening.yml
+# LINEAR EXECUTION ORDER: FOUNDATION -> STEALTH -> RETALIATION
+hardening:
+  persona: "apple"              # Options: 'apple', 'windows', 'linux'
+
+  interfaces:
+    hotspot: "uap0"             # Standard Onyx hotspot interface
+    tunnel: "wg0"               # Primary WireGuard tunnel
+  
+  # --- PHASE 1: FOUNDATION (The "Keep-Alive" Rules) ---
+  foundation:
+    default_deny: true          # Set policy to DROP
+    established_related: true   # Allows return traffic for ongoing work
+    localhost_access: true      # Essential for loopback (lo) and system IPC
+    dhcp_access: true           # Permits hotspot client IP assignment
+    rfc1918_access: true        # Allows local subnet communication
+    vpn_transport: true         # Permits physical exit to VPN endpoint
+    tunnel_integrity: true      # Protects traffic within the wg0 tunnel
+
+  # --- PHASE 2: SYSTEM & KERNEL STEALTH ---
+  system:
+    use_zram: true              # Optimizes RAM for Pi Zero performance
+    forensic_zero: true         # Moves logs to RAM disk to prevent forensics
+    dark_mode: true             # Disables physical LED indicators
+    browser_scrubbing: false    # Toggles Browser Identity Scrubber (Privoxy)
+    bluetooth_locked: true      # Disables Bluetooth hardware at kernel level
+    mac_stealth: false          # Toggles wlan0 MAC randomization
+    mac_blend: "apple"          # Options: "apple", "samsung", "intel", "random", "off"
+    ttl_masking: "windows"      # Appears as Windows stack at the packet level
+  
+  kernel:
+    fingerprint_protection: true # Disables TCP Timestamps to hide uptime
+    qname_stealth: true          # Enables DNS QNAME Minimization
+    icmp_stealth: true           # Ignores ICMP broadcasts and bogus errors
+    icmp_recon_defense: true     # Rate-limits ICMP responses against scanning
+    arp_guard: true              # Implements Neighbor Table Stealth
+    anti_spoofing: true          # Enforces Strict Reverse Path Filtering
+    flood_protection: true       # Enables TCP SYN Cookies
+    kernel_lockdown: true        # Disables SysRq and forces rapid reboot on panic
+    log_martians: true           # Logs packets with impossible source addresses
+    ip_forwarding: true          # Required for router functionality
+    disable_ipv6: true           # Prevents IPv6 leaks and address discovery
+    ignore_redirects: true       # Disables ICMP Redirect acceptance
+    no_send_redirects: true      # Disables sending of ICMP Redirects
+
+  # --- PHASE 3: ACTIVE DEFENSE & TRAFFIC OBFUSCATION ---
+  network:
+    hardware_reactive: true      # Locks down new network hardware via udev
+    safety_net: true             # Periodically enforces firewall ruleset
+    sentinel_trap: true          # Deploys Honeypot ports (TARPIT or RESET)
+    tarpit_trap: false           # Heavy defense (requires specific kernel modules)
+    geo_blocking: true           # Blocks foreign traffic via ipset
+    unbound_filtered: true       # Enforces Sentinel DNS blocklists
+    telemetry_blackout: true     # Blocks metrics/analytics strings in packets
+    mtu_stealth: true            # Clamps TCP MSS to prevent oversized packets
+    webrtc_lockdown: true        # Blocks STUN/TURN traffic to prevent IP leaks
+    port_scrambling: true        # Randomizes source ports via MASQUERADE
+    ghost_host: true             # Kills mDNS and LLMNR discovery broadcasts
+    syn_proxy: true              # Protects against SYN flood attacks
+    bogom_filter: true           # Drops malformed protocol flag combinations
+    packet_padding: false        # Obfuscates size/timing (High performance cost)
+    isolation_barrier: true      # Prevents VLAN cross-talk

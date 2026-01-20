@@ -1,0 +1,61 @@
+# /opt/onyx/config/hardening.yml
+# LINEAR EXECUTION ORDER: FOUNDATION -> STEALTH -> RETALIATION
+hardening:
+  persona: "apple"              # Options: 'apple', 'windows', 'linux'
+
+  interfaces:
+  
+  # --- PHASE 1: FOUNDATION (The "Keep-Alive" Rules) ---
+  foundation:
+    default_deny: true          # Set policy to DROP
+    established_related: true   # NEW: established_related worker
+    localhost_access: true      # NEW: localhost_access worker
+    dhcp_access: true           # NEW: dhcp_access worker
+    rfc1918_access: true        # NEW: rfc1918_access worker
+    vpn_transport: true         # NEW: vpn_transport worker
+    tunnel_integrity: true      # NEW: tunnel_integrity worker
+
+  # --- PHASE 2: SYSTEM & KERNEL STEALTH ---
+  system:
+    use_zram: true              #
+    forensic_zero: true         #
+    dark_mode: true             #
+    browser_scrubbing: false    # Toggles Browser Identity Scrubber (Privoxy)
+    bluetooth_locked: true      # Toggles BT hardware state
+    mac_stealth: false          # Toggles wlan0 MAC randomization
+    mac_blend: "apple"          # Options: "apple", "samsung", "intel", "random", "off"
+    ttl_masking: "windows"      #
+  
+  kernel:
+    fingerprint_protection: true #
+    qname_stealth: true          #
+    icmp_stealth: true           #
+    icmp_recon_defense: true     # <--- Anti-Scanning
+    arp_guard: true              # <--- Internal Stealth
+    anti_spoofing: true          #
+    flood_protection: true       #
+    kernel_lockdown: true        # Disable the Magic SysRq debug keys and Reboot automatically 1 second after a kernel panic
+    log_martians: true           # net.ipv4.conf.all.log_martians=1
+    ip_forwarding: true          # net.ipv4.ip_forward=1 (Router Function)
+    disable_ipv6: true           # net.ipv6.conf.all.*.disable_ipv6=1
+    ignore_redirects: true       # net.ipv4.conf.all.accept_redirects=0
+    no_send_redirects: true      # net.ipv4.conf.all.send_redirects=0
+
+
+  # --- PHASE 3: ACTIVE DEFENSE & TRAFFIC OBFUSCATION ---
+  network:
+    hardware_reactive: true      # When true, Onyx instantly locks down new hardware via udev
+    safety_net: true             # Enables Onyx Safety Net
+    sentinel_trap: true          #
+    tarpit_trap: false           # Engage TARPIT for connection attempts
+    geo_blocking: true           #
+    unbound_filtered: true       # Enable Unbound DNS Filtering
+    telemetry_blackout: true     #
+    mtu_stealth: true            #
+    webrtc_lockdown: true        #
+    port_scrambling: true        #
+    ghost_host: true             #
+    syn_proxy: true              #
+    bogom_filter: true           # Drop malformed packets
+    packet_padding: false        # Obfuscate packet size and timing
+    isolation_barrier: true      #
