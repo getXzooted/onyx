@@ -40,4 +40,4 @@ fi
 
 # 5. Run Network Repair (Fix any drift)
 log_info "Running Network Repair to fix any drift..."
-$ONYX_ROOT/bin/onyx network repair
+# $ONYX_ROOT/bin/onyx network repair
