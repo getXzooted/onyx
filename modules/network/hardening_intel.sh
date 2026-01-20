@@ -54,8 +54,12 @@ function repair_state() {
     iptables -F
     iptables -t nat -F
     iptables -t mangle -F
+
+    # 3. LOCAL LOOPBACK: Prevent local system deadlocks
+    iptables -A INPUT -i lo -j ACCEPT
+    iptables -A OUTPUT -o lo -j ACCEPT
     
-    # 3. Extract keys in their exact file order
+    # 4. Extract keys in their exact file order
     # Using '.. | path' ensures we traverse the YAML tree top-to-bottom
     local KEYS=$(yq e '.. | select(tag == "!!bool" or tag == "!!str") | path | join(".")' "$HARDENING_YAML")
 
