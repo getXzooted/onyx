@@ -44,20 +44,20 @@ function repair_state() {
 
     # 1. THE FAIL-CLOSED LOCK: Set default policy to DROP before flushing
     # This prevents internet access while we work.
-    log_step "Locking gates (Fail-Closed)..."
-    iptables -P INPUT DROP
-    iptables -P FORWARD DROP
-    iptables -P OUTPUT DROP
+#    log_step "Locking gates (Fail-Closed)..."
+#    iptables -P INPUT DROP
+#    iptables -P FORWARD DROP
+#    iptables -P OUTPUT DROP
 
     # 2. THE NUCLEAR FLUSH: Wipe existing rules to guarantee order
-    log_step "Flushing chains to prevent rule-drift disorder..."
-    iptables -F
-    iptables -t nat -F
-    iptables -t mangle -F
+#    log_step "Flushing chains to prevent rule-drift disorder..."
+#    iptables -F
+#    iptables -t nat -F
+#    iptables -t mangle -F
 
     # 3. LOCAL LOOPBACK: Prevent local system deadlocks
-    iptables -A INPUT -i lo -j ACCEPT
-    iptables -A OUTPUT -o lo -j ACCEPT
+#    iptables -A INPUT -i lo -j ACCEPT
+#    iptables -A OUTPUT -o lo -j ACCEPT
     
     # 4. Extract keys in their exact file order
     # Using '.. | path' ensures we traverse the YAML tree top-to-bottom
