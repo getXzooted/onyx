@@ -5,7 +5,7 @@
 # --- Project Metadata ---
 export ONYX_VERSION="2.1.0-refactor"
 export ONYX_USER="root"
-export REPAIR_INTERVAL="5min"
+export ONYX_ENFORCEMENT_INTERVAL="10min"
 
 # --- Networking Defaults ---
 export ONYX_DEFAULT_HOTSPOT_IP="10.3.141.1"
