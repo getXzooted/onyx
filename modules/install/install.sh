@@ -48,8 +48,6 @@ exit 1
 log_step "Hardening Network"
 $ONYX_ROOT/bin/onyx network repair
 
-exit 1
-
 # 5. We also reboot in case no drag-and-drop happens.
 log_info "System will reboot now to continue installation..."
 
