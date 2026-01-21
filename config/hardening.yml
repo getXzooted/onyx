@@ -25,7 +25,7 @@ hardening:
     browser_scrubbing: false    # Toggles Browser Identity Scrubber (Privoxy)
     bluetooth_locked: false      # Disables Bluetooth hardware at kernel level
     mac_stealth: false          # Toggles wlan0 MAC randomization
-    mac_blend: "apple"          # Options: "apple", "samsung", "intel", "random", "off"
+    mac_blend: "off"          # Options: "apple", "samsung", "intel", "random", "off"
     ttl_masking: "windows"      # Appears as Windows stack at the packet level
   
   kernel:
@@ -37,11 +37,11 @@ hardening:
     anti_spoofing: false          # Enforces Strict Reverse Path Filtering
     flood_protection: false       # Enables TCP SYN Cookies
     kernel_lockdown: false        # Disables SysRq and forces rapid reboot on panic
-    log_martians: false           # Logs packets with impossible source addresses
-    ip_forwarding: false          # Required for router functionality
-    disable_ipv6: false           # Prevents IPv6 leaks and address discovery
-    ignore_redirects: false       # Disables ICMP Redirect acceptance
-    no_send_redirects: false      # Disables sending of ICMP Redirects
+    log_martians: true           # Logs packets with impossible source addresses
+    ip_forwarding: true          # Required for router functionality
+    disable_ipv6: true           # Prevents IPv6 leaks and address discovery
+    ignore_redirects: true       # Disables ICMP Redirect acceptance
+    no_send_redirects: true      # Disables sending of ICMP Redirects
 
   # --- PHASE 3: ACTIVE DEFENSE & TRAFFIC OBFUSCATION ---
   network:
