@@ -29,6 +29,7 @@ networks:
 
 # --- VPN SETTINGS (Required) ---
 # You can also drop a 'wg0.conf' file in /boot instead of filling this out.
+vpn_iface: "wg0"
 vpn_private_key: "YOUR_PRIVATE_KEY_HERE"
 vpn_pubkey: "SERVER_PUBLIC_KEY_HERE"
 vpn_endpoint: "1.2.3.4"
