@@ -123,8 +123,6 @@ function parse_wg_file() {
            .vpn_port = \"$endpoint_port\" | 
            .vpn_address = \"$address\"" "$TARGET_CONFIG"
 
-    echo "debug: $priv_key $pub_key $endpoint_ip $endpoint_port $address"
-
     if [ $? -eq 0 ]; then
         log_success "VPN credentials synchronized successfully."
         return 0
