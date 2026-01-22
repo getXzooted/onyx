@@ -29,14 +29,14 @@ hardening:
     ttl_masking: "windows"      # Appears as Windows stack at the packet level
   
   kernel:
-    fingerprint_protection: false # Disables TCP Timestamps to hide uptime
-    qname_stealth: false          # Enables DNS QNAME Minimization
-    icmp_stealth: false           # Ignores ICMP broadcasts and bogus errors
-    icmp_recon_defense: false     # Rate-limits ICMP responses against scanning
+    tcp_timestamps: false # Disables TCP Timestamps to hide uptime
+    qname_minimization: false          # Enables DNS QNAME Minimization
+    icmp_echo_ignore: false           # Ignores ICMP broadcasts and bogus errors
+    icmp_ratelimit: false     # Rate-limits ICMP responses against scanning
     arp_guard: false              # Implements Neighbor Table Stealth
-    anti_spoofing: false          # Enforces Strict Reverse Path Filtering
-    flood_protection: false       # Enables TCP SYN Cookies
-    kernel_lockdown: false        # Disables SysRq and forces rapid reboot on panic
+    rp_filter: false          # Enforces Strict Reverse Path Filtering
+    tcp_syncookies: false       # Enables TCP SYN Cookies
+    kernel_sysrq: false        # Disables SysRq and forces rapid reboot on panic
     log_martians: true           # Logs packets with impossible source addresses
     ip_forwarding: true          # Required for router functionality
     disable_ipv6: true           # Prevents IPv6 leaks and address discovery

@@ -19,6 +19,14 @@ source $MODULES_DIR/firewall/kernal/ip_forwarding.sh
 source $MODULES_DIR/firewall/kernal/disable_ipv6.sh
 source $MODULES_DIR/firewall/kernal/ignore_redirects.sh
 source $MODULES_DIR/firewall/kernal/no_send_redirects.sh
+source $MODULES_DIR/firewall/kernal/tcp_timestamps.sh
+source $MODULES_DIR/firewall/kernal/qname_minimization.sh
+source $MODULES_DIR/firewall/kernal/icmp_ratelimit.sh
+source $MODULES_DIR/firewall/kernal/arp_guard.sh
+source $MODULES_DIR/firewall/kernal/rp_filter.sh
+source $MODULES_DIR/firewall/kernal/tcp_syncookies.sh
+source $MODULES_DIR/firewall/kernal/kernal_sysrq.sh
+source $MODULES_DIR/firewall/kernal/icmp_echo_ignore.sh
 
 
 

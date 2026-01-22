@@ -38,116 +38,6 @@ function apply_mac_stealth() {
     fi
 }
 
-function check_qname_stealth() {
-    # Verify QNAME Minimization is active in Unbound config
-    grep -q "qname-minimisation: yes" /etc/unbound/unbound.conf.d/pi-zero.conf &>/dev/null && return 0 || return 1
-}
-
-function apply_qname_stealth() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying QNAME Minimization (DNS Metadata Stealth)..."
-        # Inject privacy flag into the server block
-        sed -i '/server:/a \    qname-minimisation: yes' /etc/unbound/unbound.conf.d/pi-zero.conf
-        systemctl restart unbound &>/dev/null
-    fi
-}
-
-function check_icmp_recon_defense() {
-    [[ "$(sysctl -n net.ipv4.icmp_ratelimit)" == "1000" ]] && return 0 || return 1
-}
-
-function apply_icmp_recon_defense() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying ICMP Recon Defense (Anti-Scanning)..."
-        # Standardize rate limiting and ignore bogus error responses
-        sysctl -w net.ipv4.icmp_ratelimit=1000 > /dev/null
-        sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 > /dev/null
-    fi
-}
-
-function check_arp_guard() {
-    [[ "$(sysctl -n net.ipv4.conf.all.arp_ignore)" == "1" ]] && return 0 || return 1
-}
-
-function apply_arp_guard() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying ARP Guard (Neighbor Table Stealth)..."
-        sysctl -w net.ipv4.conf.all.arp_ignore=1 > /dev/null
-        sysctl -w net.ipv4.conf.all.arp_announce=2 > /dev/null
-    fi
-}
-
-function check_fingerprint_protection() {
-    # Verify if TCP Timestamps are disabled (Reduced OS signature)
-    [[ "$(sysctl -n net.ipv4.tcp_timestamps)" == "0" ]] && return 0 || return 1
-}
-
-function apply_fingerprint_protection() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Standardizing TCP Stack (Anti-Fingerprinting)..."
-        # 1. Disable RFC1323 timestamps to hide OS-specific uptime/timing
-        sysctl -w net.ipv4.tcp_timestamps=0 > /dev/null
-        # 2. Enable Window Scaling (Standard behavior)
-        sysctl -w net.ipv4.tcp_window_scaling=1 > /dev/null
-    fi
-}
-
-function check_kernel_lockdown() {
-    [[ "$(sysctl -n kernel.sysrq)" == "0" ]] && return 0 || return 1
-}
-
-function apply_kernel_lockdown() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Kernel Lockdown (Anti-Forensics)..."
-        # Disable the Magic SysRq debug keys
-        sysctl -w kernel.sysrq=0 > /dev/null
-        # Reboot automatically 1 second after a kernel panic
-        sysctl -w kernel.panic=1 > /dev/null
-    fi
-}
-
-function check_anti_spoofing() {
-    # Verify Strict Reverse Path Filtering is active
-    [[ "$(sysctl -n net.ipv4.conf.all.rp_filter)" == "1" ]] && return 0 || return 1
-}
-
-function apply_anti_spoofing() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Anti-Spoofing (Strict RP Filter)..."
-        # Prevents an attacker from sending packets with a fake source IP
-        sysctl -w net.ipv4.conf.all.rp_filter=1 > /dev/null
-        sysctl -w net.ipv4.conf.default.rp_filter=1 > /dev/null
-    fi
-}
-
-function check_flood_protection() {
-    # Check if TCP SYN Cookies are enabled
-    [[ "$(sysctl -n net.ipv4.tcp_syncookies)" == "1" ]] && return 0 || return 1
-}
-
-function apply_flood_protection() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Flood Protection (TCP SYN Cookies)..."
-        # Protects against SYN flood attacks
-        sysctl -w net.ipv4.tcp_syncookies=1 > /dev/null
-    fi
-}
-
-function check_icmp_stealth() {
-    # Check if ignoring ICMP broadcasts and bogus error responses
-    [[ "$(sysctl -n net.ipv4.icmp_echo_ignore_broadcasts)" == "1" ]] && return 0 || return 1
-}
-
-function apply_icmp_stealth() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying ICMP Stealth (Dropping Broadcast/Bogus)..."
-        # Ignore ICMP echo broadcasts to prevent Smurf attacks
-        sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 > /dev/null
-        # Ignore bogus ICMP error responses
-        sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 > /dev/null
-    fi
-}
-
 # --- SYSTEM RULES ---
 
 function apply_use_zram() {
@@ -582,17 +472,7 @@ function apply_isolation_barrier() {
     fi
 }
 
-function check_default_deny() {
-    # Check if the global policy is DROP
-    iptables -L FORWARD -n | grep -q "policy DROP" && return 0 || return 1
-}
 
-function apply_default_deny() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Global Default Deny policy..."
-        iptables -P FORWARD DROP
-    fi
-}
 
 function check_ttl_masking() {
     local DESIRED=$1
