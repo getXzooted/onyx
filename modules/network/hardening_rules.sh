@@ -148,58 +148,6 @@ function apply_icmp_stealth() {
     fi
 }
 
-function check_disable_ipv6() {
-    local INTENT=$1
-    local CURRENT=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
-    # If YAML says true (disable) but kernel says 0 (enabled), it's a drift
-    [[ "$INTENT" == "true" && "$CURRENT" == "0" ]] && return 1
-    return 0
-}
-
-function apply_disable_ipv6() {
-    log_step "Applying IPv6 Lockdown..."
-    sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null
-    sysctl -w net.ipv6.conf.default.disable_ipv6=1 > /dev/null
-}
-
-function check_ignore_redirects() {
-    [[ "$(sysctl -n net.ipv4.conf.all.accept_redirects)" == "0" ]] && return 0 || return 1
-}
-
-function apply_ignore_redirects() {
-    sysctl -w net.ipv4.conf.all.accept_redirects=0 > /dev/null
-}
-
-function check_ip_forwarding() {
-    [[ "$(sysctl -n net.ipv4.ip_forward)" == "1" ]] && return 0 || return 1
-}
-
-function apply_ip_forwarding() {
-    if [[ "$1" == "true" ]]; then
-        sysctl -w net.ipv4.ip_forward=1 > /dev/null
-    fi
-}
-
-function check_log_martians() {
-    [[ "$(sysctl -n net.ipv4.conf.all.log_martians)" == "1" ]] && return 0 || return 1
-}
-
-function apply_log_martians() {
-    if [[ "$1" == "true" ]]; then
-        sysctl -w net.ipv4.conf.all.log_martians=1 > /dev/null
-    fi
-}
-
-function check_no_send_redirects() {
-    [[ "$(sysctl -n net.ipv4.conf.all.send_redirects)" == "0" ]] && return 0 || return 1
-}
-
-function apply_no_send_redirects() {
-    if [[ "$1" == "true" ]]; then
-        sysctl -w net.ipv4.conf.all.send_redirects=0 > /dev/null
-    fi
-}
-
 # --- SYSTEM RULES ---
 
 function apply_use_zram() {
