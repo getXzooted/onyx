@@ -47,7 +47,7 @@ hardening:
     hardware_reactive: false      # Locks down new network hardware via udev
     safety_net: true             # Periodically enforces firewall ruleset
     honeypot_trap: true          # Deploys Honeypot ports (TARPIT or RESET)
-    tarpit_trap: true           # Heavy defense (requires specific kernel modules)
+    tcp_tarpit: true           # Heavy defense (requires specific kernel modules)
     geo_blocking: false           # Blocks foreign traffic via ipset
     unbound_filtered: false       # Enforces Sentinel DNS blocklists
     string_telemetry_filter: true     # Blocks metrics/analytics strings in packets
