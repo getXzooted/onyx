@@ -3,6 +3,7 @@
 # Purpose: Establish baseline firewall rules for system integrity and VPN operation.
 
 # FOUNDATION
+source $MODULES_DIR/firewall/foundation/default_deny.sh
 source $MODULES_DIR/firewall/foundation/established_related.sh
 source $MODULES_DIR/firewall/foundation/localhost_access.sh
 source $MODULES_DIR/firewall/foundation/dhcp_access.sh
