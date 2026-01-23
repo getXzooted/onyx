@@ -35,7 +35,7 @@ source $MODULES_DIR/firewall/kernel/icmp_echo_ignore.sh
 
 # NETWORK
 source $MODULES_DIR/firewall/network/honeypot_trap.sh
-source $MODULES_DIR/firewall/network/tarpit_trap.sh
+source $MODULES_DIR/firewall/network/tcp_tarpit.sh
 #source $MODULES_DIR/firewall/network/geo_blocking.sh
 #source $MODULES_DIR/firewall/network/unbound_filtered.sh
 source $MODULES_DIR/firewall/network/string_telemetry_filter.sh
