@@ -21,9 +21,9 @@ hardening:
   system:
     use_zram: false              # Optimizes RAM for Pi Zero performance
     forensic_zero: false         # Moves logs to RAM disk to prevent forensics
-    dark_mode: false             # Disables physical LED indicators
+    physical_stealth: true             # Disables physical LED indicators
     browser_scrubbing: false    # Toggles Browser Identity Scrubber (Privoxy)
-    bluetooth_locked: false      # Disables Bluetooth hardware at kernel level
+    bluetooth_lockdown: true      # Disables Bluetooth hardware at kernel level
     mac_stealth: false          # Toggles wlan0 MAC randomization
     mac_blend: "off"          # Options: "apple", "samsung", "intel", "random", "off"
     ttl_masking: "windows"      # Appears as Windows stack at the packet level
@@ -47,16 +47,16 @@ hardening:
   network:
     hardware_reactive: false      # Locks down new network hardware via udev
     safety_net: false             # Periodically enforces firewall ruleset
-    sentinel_trap: false          # Deploys Honeypot ports (TARPIT or RESET)
-    tarpit_trap: false           # Heavy defense (requires specific kernel modules)
+    honeypot_trap: true          # Deploys Honeypot ports (TARPIT or RESET)
+    tarpit_trap: true           # Heavy defense (requires specific kernel modules)
     geo_blocking: false           # Blocks foreign traffic via ipset
     unbound_filtered: false       # Enforces Sentinel DNS blocklists
-    telemetry_blackout: false     # Blocks metrics/analytics strings in packets
-    mtu_stealth: false            # Clamps TCP MSS to prevent oversized packets
-    webrtc_lockdown: false        # Blocks STUN/TURN traffic to prevent IP leaks
-    port_scrambling: false        # Randomizes source ports via MASQUERADE
-    ghost_host: false             # Kills mDNS and LLMNR discovery broadcasts
-    syn_proxy: false              # Protects against SYN flood attacks
-    bogom_filter: false           # Drops malformed protocol flag combinations
+    string_telemetry_filter: true     # Blocks metrics/analytics strings in packets
+    mss_clamping: true            # Clamps TCP MSS to prevent oversized packets
+    webrtc_stun_block: true        # Blocks STUN/TURN traffic to prevent IP leaks
+    source_port_randomization: true        # Randomizes source ports via MASQUERADE
+    discovery_stealth: true             # Kills mDNS and LLMNR discovery broadcasts
+    syn_proxy: true              # Protects against SYN flood attacks
+    tcp_flag_filter: true           # Drops malformed protocol flag combinations
     packet_padding: false        # Obfuscates size/timing (High performance cost)
-    isolation_barrier: false      # Prevents VLAN cross-talk
+    vlan_isolation: true      # Prevents VLAN cross-talk

@@ -167,24 +167,7 @@ function apply_forensic_zero() {
     fi
 }
 
-function check_dark_mode() {
-    # Check if the dtparam for LEDs is in the config
-    grep -q "dtparam=pwr_led_trigger=none" /boot/firmware/config.txt &>/dev/null && return 0 || return 1
-}
 
-function apply_dark_mode() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Physical Dark Mode (LED Stealth)..."
-        # Disable PWR and ACT LEDs in the firmware config
-        {
-            echo "dtparam=pwr_led_trigger=none"
-            echo "dtparam=pwr_led_activelow=off"
-            echo "dtparam=act_led_trigger=none"
-            echo "dtparam=act_led_activelow=off"
-        } >> /boot/firmware/config.txt
-        log_info "Physical stealth requires a reboot to sync firmware."
-    fi
-}
 
 function check_mac_blend() {
     local DESIRED=$1
@@ -237,24 +220,6 @@ function apply_mac_blend() {
     log_success "MAC Blend Active: Now appearing as $MODE hardware."
 }
 
-function check_bluetooth_locked() {
-    local INTENT=$1
-    if [[ "$INTENT" == "true" ]]; then
-        systemctl is-active bluetooth &>/dev/null && return 1 || return 0
-    fi
-    return 0
-}
-
-function apply_bluetooth_locked() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Locking Bluetooth Hardware..."
-        systemctl disable --now bluetooth &>/dev/null
-        grep -q "dtoverlay=disable-bt" /boot/firmware/config.txt || echo "dtoverlay=disable-bt" >> /boot/firmware/config.txt
-    fi
-}
-
-# --- NETWORK RULES ---
-
 function check_safety_net() {
     # 1. Verify Default Policy is DROP
     #if ! iptables -L FORWARD -n | grep -q "policy DROP"; then
@@ -286,96 +251,6 @@ function apply_safety_net() {
     fi
 }
 
-function check_ghost_host() {
-    # Check if mDNS and LLMNR ports are blocked in the OUTPUT chain
-    iptables -C OUTPUT -p udp -m multiport --dports 5353,5355 -j DROP &>/dev/null && return 0 || return 1
-}
-
-function apply_ghost_host() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Ghost Host (Killing Discovery Broadcasts)..."
-        # Block outbound mDNS (5353) and LLMNR (5355)
-        build_rule OUTPUT -p udp -m multiport --dports 5353,5355 -j DROP
-    fi
-}
-
-function check_mtu_stealth() {
-    # Check if MSS clamping is active on the WireGuard interface
-    iptables -t mangle -C POSTROUTING -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu &>/dev/null && return 0 || return 1
-}
-
-function apply_mtu_stealth() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying MTU/MSS Stealth (Clamping wg0)..."
-        # Force TCP handshake to use the tunnel's specific MTU to prevent 'Oversized Packet' detection
-        iptables -t mangle -A POSTROUTING -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
-    fi
-}
-
-function check_webrtc_lockdown() {
-    iptables -C OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP &>/dev/null && return 0 || return 1
-}
-
-function apply_webrtc_lockdown() {
-    log_step "Blocking WebRTC STUN/TURN traffic..."
-    build_rule OUTPUT -p udp -m multiport --dports 3478,19302,5349 -j DROP
-}
-
-function check_old_syn_proxy() {
-    iptables -t raw -C PREROUTING -i vlan20 -p tcp --syn -j NOTRACK &>/dev/null && return 0 || return 1
-}
-
-function apply_old_syn_proxy() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Engaging SYN Proxy (VLAN Isolation Guard)..."
-        # 1. Flag packets for SYNPROXY processing
-        iptables -t raw -A PREROUTING -i vlan20 -p tcp --syn -j NOTRACK
-        iptables -A FORWARD -i vlan20 -p tcp -m state --state INVALID,UNTRACKED -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460
-        # 2. Drop anything that doesn't complete the handshake with the Pi
-        iptables -A FORWARD -i vlan20 -m state --state INVALID -j DROP
-    fi
-}
-
-function check_syn_proxy() {
-    # Match the new label-based logic from the apply worker
-    iptables -S FORWARD 2>/dev/null | grep -q "ONYX_SYN_PROXY" && return 0 || return 1
-}
-
-function apply_syn_proxy() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Engaging SYN Proxy (VLAN Isolation Guard)..."
-        
-        # We add a unique comment so build_rule can find it instantly
-        build_rule FORWARD -p tcp -m state --state INVALID,UNTRACKED \
-            -j SYNPROXY --sack-perm --timestamp --wscale 7 --mss 1460 \
-            -m comment --comment "ONYX_SYN_PROXY"
-            
-        build_rule FORWARD -m state --state INVALID -j DROP \
-            -m comment --comment "ONYX_INVALID_DROP"
-    fi
-}
-
-function check_port_scrambling() {
-    # 1. Check legacy iptables
-    iptables -t nat -L POSTROUTING -n | grep -q "MASQUERADE.*fully-random" && return 0
-    
-    # 2. Check native nftables (Fallback Check)
-    nft list table ip nat 2>/dev/null | grep -q "masquerade fully-random" && return 0
-    
-    return 1
-}
-
-function apply_port_scrambling() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Port Scrambling (Source Port Randomization)..."
-        # 1. Try the standard nf_tables flag
-        if ! iptables -t nat -A POSTROUTING -p udp --dport "$ONYX_VPN_PORT" -j MASQUERADE --random-fully 2>/dev/null; then
-            # 2. Tactical Fallback: Use native nftables command if iptables-nft shim fails
-            log_info "iptables shim failed; using native nft fallback..."
-            nft add rule ip nat POSTROUTING udp dport "$ONYX_VPN_PORT" masquerade fully-random 2>/dev/null
-        fi
-    fi
-}
 
 function check_packet_padding() {
     # Instead of looking for '64', we look for the intent in hardening.yml
@@ -415,65 +290,6 @@ function apply_packet_padding() {
     fi
 }
 
-function apply_bogom_filter() {
-    log_step "Engaging Bogom Filter (Dropping Malformed Protocols)..."
-    # Drop packets with invalid flag combinations used by scanners
-    build_rule INPUT -p tcp --tcp-flags ALL NONE -j DROP
-    build_rule INPUT -p tcp --tcp-flags ALL ALL -j DROP
-}
-
-function check_bogom_filter() {
-    # 1. Check for the Null Scan block
-    if ! iptables -C INPUT -p tcp --tcp-flags ALL NONE -j DROP &>/dev/null; then
-        return 1
-    fi
-
-    # 2. Check for the Xmas Scan block
-    if ! iptables -C INPUT -p tcp --tcp-flags ALL ALL -j DROP &>/dev/null; then
-        return 1
-    fi
-
-    return 0
-}
-
-function check_tarpit_trap() {
-    if [[ "$1" == "true" ]]; then
-        if modinfo xt_TARPIT &>/dev/null; then
-            iptables -L INPUT -n | grep -q "TARPIT" && return 0 || return 1
-        else
-            log_warning "TARPIT Trap check skipped: Kernel module missing (6.12 Build Failure)."
-            return 0
-        fi
-    else
-        return 0
-    fi
-}
-
-function apply_tarpit_trap() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Setting Scanner Traps (TARPIT Active)..."
-        # SAFE MODE: Only apply TARPIT if the module is available
-        if modinfo xt_TARPIT &>/dev/null; then
-            iptables -A INPUT -p tcp -m state --state NEW -j TARPIT
-        else
-            log_warning "TARPIT Trap skipped: Kernel module missing (6.12 Build Failure)."
-        fi
-    fi
-}
-
-function check_isolation_barrier() {
-    iptables -C FORWARD -i vlan20 -o uap0 -j DROP &>/dev/null && return 0 || return 1
-}
-
-function apply_isolation_barrier() {
-    if [[ "$1" == "true" ]]; then
-        # Calls tactical function from execution lib
-        build_rule FORWARD -i vlan20 -o uap0 -j DROP
-    fi
-}
-
-
-
 function check_ttl_masking() {
     local DESIRED=$1
     [[ "$DESIRED" == "off" ]] && return 0
@@ -502,25 +318,6 @@ function apply_ttl_masking() {
     # Force the OS identity at the packet level
     iptables -t mangle -A POSTROUTING -j TTL --ttl-set "$VAL"
     log_success "TTL Identity set to $VAL."
-}
-
-# --- SENTINEL TRAP WORKER ---
-function check_sentinel_trap() {
-    # Check for the specific honey ports in the INPUT chain
-    iptables -L INPUT -n | grep -q "23,3389" && return 0 || return 1
-}
-
-function apply_sentinel_trap() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying Sentinel Trap (Honeypot Active)..."
-        # TACTICAL FALLBACK: Use TARPIT if available, otherwise force a TCP Reset
-        if modprobe xt_TARPIT 2>/dev/null; then
-            build_rule INPUT -p tcp -m multiport --dports 23,3389 -j TARPIT
-        else
-            log_warning "TARPIT module not found. Using standard TCP-Reset trap."
-            build_rule INPUT -p tcp -m multiport --dports 23,3389 -j REJECT --reject-with tcp-reset
-        fi
-    fi
 }
 
 # --- UNBOUND FILTER WORKER (DNS SENTINEL) ---
@@ -573,27 +370,6 @@ function apply_geo_blocking() {
         log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges loaded into memory."
     fi
 }
-
-# --- DPI LITE WORKER ---
-function check_telemetry_blackout() {
-    # Check for the telemetry signature rule in the FORWARD chain
-    iptables -C FORWARD -m string --algo bm --string "telemetry" -j REJECT 2>/dev/null && return 0 || return 1
-}
-
-function apply_telemetry_blackout() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Engaging Telemetry Blackout..."
-        local SIGNATURES=("telemetry" "analytics" "metrics" "vortex.data")
-        for SIG in "${SIGNATURES[@]}"; do
-            # Inject signatures into both Forwarding and Output chains
-            build_rule FORWARD -m string --algo bm --string "$SIG" -j REJECT
-            build_rule OUTPUT -m string --algo bm --string "$SIG" -j REJECT
-        done
-    fi
-}
-
-
-
 
 # --- IDENTITY SCRUBBER: AUDIT WORKER ---
 function check_browser_scrubbing() {
@@ -764,17 +540,6 @@ EOF
         done
     fi
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 # --- HARDWARE TRIGGER WORKER ---
