@@ -25,6 +25,7 @@ export CONFIG_DIR="$ONYX_ROOT/config"
 export LIB_DIR="$ONYX_ROOT/lib"
 export ONYX_YAML="$CONFIG_DIR/onyx.yml"
 export HARDENING_YAML="$CONFIG_DIR/hardening.yml"
+export ASSETS_YAML="$CONFIG_DIR/assets.yml"
 export ONYX_LOG_RAM="/var/log/onyx"
 export ONYX_RESUME_MARKER="/var/opt/onyx_resume_pending"
 
