@@ -5,41 +5,6 @@
 # --- FOUNDATION RULES ---
 source $MODULES_DIR/firewall/rules.sh
 
-# --- KERNEL RULES ---
-
-function check_mac_stealth() {
-    # Verify if uap0 is using its permanent hardware MAC or a randomized one
-    local CURRENT=$(cat /sys/class/net/uap0/address 2>/dev/null)
-    local PERM=$(ethtool -P uap0 2>/dev/null | awk '{print $3}')
-    
-    # If they match, the MAC is NOT rotated (Drifted)
-    if [[ "$CURRENT" == "$PERM" ]]; then
-        return 1
-    fi
-    return 0
-}
-
-function apply_mac_stealth() {
-    if [[ "$1" == "true" ]]; then
-        log_step "Applying MAC Stealth (Rotating uap0)..."
-        
-        # 1. Stop the Wireless Stack to prevent BSSID mismatch
-        systemctl stop hostapd dnsmasq &>/dev/null
-        
-        # 2. Rotate the MAC
-        ip link set uap0 down
-        macchanger -r uap0 &>/dev/null
-        ip link set uap0 up
-        
-        # 3. Restart services to broadcast the new identity
-        systemctl start dnsmasq hostapd &>/dev/null
-        
-        log_success "MAC Stealth Applied: uap0 identity rotated."
-    fi
-}
-
-# --- SYSTEM RULES ---
-
 function apply_use_zram() {
 
     # === MEMORY OPTIMIZATION FOR PI ZERO ===
