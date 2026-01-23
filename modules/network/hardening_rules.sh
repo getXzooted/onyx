@@ -167,38 +167,6 @@ function apply_forensic_zero() {
     fi
 }
 
-function check_safety_net() {
-    # 1. Verify Default Policy is DROP
-    #if ! iptables -L FORWARD -n | grep -q "policy DROP"; then
-    #    return 1
-    #fi
-    
-    # 2. Verify VPN Endpoint rule is present in OUTPUT chain
-    #if ! iptables -L OUTPUT -n | grep -q "$ONYX_VPN_ENDPOINT"; then
-    #    return 1
-    #fi
-    
-    return 0
-}
-
-function apply_safety_net() {
-    if [[ "$1" == "true" ]]; then
-    #    log_step "Repairing Safety Net (Firewall Sync)..."
-    #    
-    #    # 1. LOAD THE GENERATOR: Ensure the module is available
-    #    source "$ONYX_ROOT/modules/network/safety_net.sh"
-    #    
-    #    # 2. EXECUTE: Now that the file is guaranteed to exist, run it to restore internet
-    #    if [ -x "/usr/local/bin/safety-net.sh" ]; then
-    #        /usr/local/bin/safety-net.sh
-    #    else
-    #        log_error "Safety Net repair failed: Script could not be built."
-    #    fi
-    return 0
-    fi
-}
-
-
 function check_packet_padding() {
     # Instead of looking for '64', we look for the intent in hardening.yml
     local INTENT=$(yq e '.hardening.system.ttl_masking' "$HARDENING_YAML")
