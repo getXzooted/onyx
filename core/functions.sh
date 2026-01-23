@@ -146,3 +146,31 @@ function show_usage() {
     echo -e "  ${GREEN}firmware${NC}   update     -> Pulls latest code while preserving .yml configs."
     echo ""
 }
+
+
+
+function get_persona_value() {
+    local TYPE=$1 # 'ttl' or 'oui'
+    local CONFIG="/opt/onyx/config/hardening.yml"
+    local PERSONA=$(grep "^  persona:" "$CONFIG" | awk -F'"' '{print $2}' | tr '[:upper:]' '[:lower:]')
+
+    case "$TYPE" in
+        ttl)
+            case "$PERSONA" in
+                windows)         echo "128" ;;
+                apple|ios|linux) echo "64"  ;;
+                solaris|bsd)     echo "255" ;;
+                *)               echo "64"  ;; # Default Linux/Universal
+            esac
+            ;;
+        oui)
+            case "$PERSONA" in
+                apple|ios) echo "60:fb:42" ;;
+                windows)   echo "00:15:5d" ;;
+                linux)     echo "00:16:3e" ;;
+                samsung)   echo "00:07:ab" ;;
+                *)         echo "RANDOM"   ;; # Trigger macchanger -r
+            esac
+            ;;
+    esac
+}
