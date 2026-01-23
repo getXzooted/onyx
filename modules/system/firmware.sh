@@ -9,10 +9,10 @@ RESTORE_ASSETS=true
 
 for arg in "$@"; do
     case $arg in
-        --fresh-onyx)    RESTORE_ONYX=false ;;
-        --fresh-rules)    RESTORE_RULES=false ;;
-        --fresh-assets)    RESTORE_ASSETS=false ;;
-        --fresh-all)     RESTORE_ONYX=false; RESTORE_RULES=false; RESTORE_ASSETS=false ;;
+        --fresh-onyx)    RESTORE_ONYX=true ;;
+        --fresh-rules)    RESTORE_RULES=true ;;
+        --fresh-assets)    RESTORE_ASSETS=true ;;
+        --fresh-all)     RESTORE_ONYX=true; RESTORE_RULES=true; RESTORE_ASSETS=true ;;
     esac
 done
 
