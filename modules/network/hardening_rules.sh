@@ -167,59 +167,6 @@ function apply_forensic_zero() {
     fi
 }
 
-
-
-function check_mac_blend() {
-    local DESIRED=$1
-    local CURRENT=$(cat /sys/class/net/uap0/address 2>/dev/null)
-    
-    # If the rule is off, we are technically 'in sync' with the off state
-    [[ "$DESIRED" == "off" ]] && return 0
-
-    case "$DESIRED" in
-        apple)   OUI="60:fb:42" ;;
-        samsung) OUI="00:07:ab" ;;
-        intel)   OUI="00:16:ea" ;;
-        random)  return 0 ;; # Random always passes audit as it has no fixed OUI
-        *) return 1 ;; # Invalid or drifted
-    esac
-
-    [[ "$CURRENT" =~ ^($OUI) ]] && return 0 || return 1
-}
-
-function apply_mac_blend() {
-    local MODE=$1
-    [[ "$MODE" == "off" ]] && return 0
-
-    case "$MODE" in
-        apple)   OUI="60:fb:42" ;;
-        samsung) OUI="00:07:ab" ;;
-        intel)   OUI="00:16:ea" ;;
-        random)  
-            log_step "Applying Total MAC Randomization..."
-            ip link set uap0 down
-            macchanger -r uap0 &>/dev/null
-            ip link set uap0 up
-            return 0
-            ;;
-    esac
-
-    log_step "Applying MAC Blend: Adopting $MODE identity..."
-    # 1. Stop the Wireless Stack to prevent BSSID mismatch
-    systemctl stop hostapd dnsmasq &>/dev/null
-
-    # 2. Rotate the MAC
-    ip link set uap0 down
-    # Combine the fixed OUI with a randomized suffix
-    ip link set dev uap0 address ${OUI}:$(printf '%02x:%02x:%02x' $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)))
-    ip link set uap0 up
-
-    # 3. Restart services to broadcast the new identity
-    systemctl start dnsmasq hostapd &>/dev/null
-    
-    log_success "MAC Blend Active: Now appearing as $MODE hardware."
-}
-
 function check_safety_net() {
     # 1. Verify Default Policy is DROP
     #if ! iptables -L FORWARD -n | grep -q "policy DROP"; then
@@ -288,36 +235,6 @@ function apply_packet_padding() {
             log_warning "Advanced Padding (xt_ID) skipped: Kernel module missing."
         fi
     fi
-}
-
-function check_ttl_masking() {
-    local DESIRED=$1
-    [[ "$DESIRED" == "off" ]] && return 0
-
-    case "$DESIRED" in
-        windows) VAL="128" ;;
-        linux)   VAL="64"  ;;
-        solaris) VAL="255" ;;
-    esac
-
-    # Check the mangle table specifically for the "Set TTL" target
-    iptables -t mangle -L POSTROUTING -n | grep -q "TTL set to $VAL" && return 0 || return 1
-}
-
-function apply_ttl_masking() {
-    local MODE=$1
-    [[ "$MODE" == "off" ]] && return 0
-
-    case "$MODE" in
-        windows) VAL="128" ;;
-        linux)   VAL="64"  ;;
-        solaris) VAL="255" ;;
-    esac
-
-    log_step "Applying TTL Mask: Appearing as $MODE hardware..."
-    # Force the OS identity at the packet level
-    iptables -t mangle -A POSTROUTING -j TTL --ttl-set "$VAL"
-    log_success "TTL Identity set to $VAL."
 }
 
 # --- UNBOUND FILTER WORKER (DNS SENTINEL) ---

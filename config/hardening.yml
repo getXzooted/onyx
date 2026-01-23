@@ -24,9 +24,8 @@ hardening:
     physical_stealth: true             # Disables physical LED indicators
     browser_scrubbing: false    # Toggles Browser Identity Scrubber (Privoxy)
     bluetooth_lockdown: true      # Disables Bluetooth hardware at kernel level
-    mac_stealth: false          # Toggles wlan0 MAC randomization
-    mac_blend: "off"          # Options: "apple", "samsung", "intel", "random", "off"
-    ttl_masking: "windows"      # Appears as Windows stack at the packet level
+    mac_blend: true          # Options: "apple", "samsung", "intel", "random", "off"
+    ttl_identity_mask: true      # Appears as Windows stack at the packet level
   
   kernel:
     tcp_timestamps: true # Disables TCP Timestamps to hide uptime
@@ -46,7 +45,7 @@ hardening:
   # --- PHASE 3: ACTIVE DEFENSE & TRAFFIC OBFUSCATION ---
   network:
     hardware_reactive: false      # Locks down new network hardware via udev
-    safety_net: false             # Periodically enforces firewall ruleset
+    safety_net: true             # Periodically enforces firewall ruleset
     honeypot_trap: true          # Deploys Honeypot ports (TARPIT or RESET)
     tarpit_trap: true           # Heavy defense (requires specific kernel modules)
     geo_blocking: false           # Blocks foreign traffic via ipset

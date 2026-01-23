@@ -13,6 +13,9 @@ source $MODULES_DIR/firewall/foundation/tunnel_integrity.sh
 # SYSTEM
 source $MODULES_DIR/firewall/system/bluetooth_lockdown.sh
 source $MODULES_DIR/firewall/system/physical_stealth.sh
+#source $MODULES_DIR/firewall/system/browser_scrubbing.sh
+source $MODULES_DIR/firewall/system/mac_blend.sh
+source $MODULES_DIR/firewall/system/ttl_identity_mask.sh
 
 # KERNEL
 source $MODULES_DIR/firewall/kernel/log_martians.sh
@@ -42,6 +45,7 @@ source $MODULES_DIR/firewall/network/discovery_stealth.sh
 source $MODULES_DIR/firewall/network/syn_proxy.sh
 source $MODULES_DIR/firewall/network/tcp_flag_filter.sh
 source $MODULES_DIR/firewall/network/vlan_isolation.sh
+source $MODULES_DIR/firewall/network/safety_net.sh
 
 
 
