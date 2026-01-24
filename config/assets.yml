@@ -1,17 +1,32 @@
 # /opt/onyx/config/assets.yml
+
 assets:
+  # --- System Prerequisites ---
+  firewall_dir:
+    path: "/etc/onyx/firewall"
+    type: "directory"
+
+  ipset:
+    type: "package"
+
+  # --- Intelligence Feeds ---
   sentinel_dns:
     source: "https://raw.githubusercontent.com/stevenblack/hosts/master/hosts"
-    path: "/etc/unbound/unbound.conf.d/onyx-sentinel.conf"
-    type: "unbound_filter"
-    action: "systemctl restart unbound"
+    path: "/etc/unbound/unbound.conf.d/sentinel_raw.tmp"
+    type: "file"
 
   geoblock_high_risk:
     source: "https://raw.githubusercontent.com/herrbischoff/country-ip-blocks/refs/heads/master/ipv4/cn.cidr"
     path: "/etc/onyx/firewall/geo_block.list"
-    type: "ip_list"
+    type: "file"
 
+  # --- Binary Tools ---
   yq_processor:
     source: "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_arm"
     path: "/usr/local/bin/yq"
     type: "binary"
+
+  xtables_addons:
+    type: "package"
+    # This package provides the xt_ID module required for shape obfuscation
+    package_name: "xtables-addons-common"
