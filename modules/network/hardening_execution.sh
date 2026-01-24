@@ -59,9 +59,8 @@ function build_rule() {
     # 3. SECONDARY CHECK: The Standard Way
     # If no label was found or the label didn't match, check the full rule string
     if ! iptables -C "$CHAIN" $RULE 2>/dev/null; then
-        log_step "Injecting rule into $CHAIN..."
+        log_step "Injecting $RULE into $CHAIN..."
         iptables -A "$CHAIN" $RULE
-        log_success "Rule active."
     else
         log_info "Rule exists (standard check), skipping."
     fi
