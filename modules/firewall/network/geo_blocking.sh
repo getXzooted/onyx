@@ -7,10 +7,11 @@ function apply_geo_blocking() {
 
         # 1. JIT Prerequisites (using your Asset Engine logic)
         # asset_get "ipset"
+         asset_get "geoblock_high_risk"
 
         # 2. THE FIX: Force the bridge modules to wake up
         modprobe ip_set 2>/dev/null
-        modprobe xt_set 2>/dev/null
+        #modprobe xt_set 2>/dev/null
 
         if [[ -f "$LIST" ]]; then
             # 3. Standard ipset logic
