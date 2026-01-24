@@ -25,7 +25,7 @@ function apply_string_telemetry_filter() {
 function check_string_telemetry_filter() {
     local INTENT=$1
     # We check the primary "telemetry" signature as the canary for the group
-    iptables -C FORWARD -m string --algo bm --string "telemetry" -j REJECT &>/dev/null
+    iptables -S FORWARD 2>/dev/null | grep -q "ONYX_SIG_telemetry"
     local STATUS=$?
 
     # SYNC LOGIC:
