@@ -40,23 +40,13 @@ function apply_geo_blocking() {
 }
 
 function check_geo_blocking() {
-    local INTENT=$1
+    # 1. Verify the set exists and is populated
+    local COUNT=$(ipset list onyx_geoblock 2>/dev/null | grep -c '/' || echo 0)
     
-    # Audit for the specific ONYX_GEOBLOCK label we just added
-    iptables -S INPUT 2>/dev/null | grep -q "ONYX_GEOBLOCK"
-    local RULE_EXISTS=$?
-    
-    # Verify the set is actually in memory
-    ipset list onyx_geoblock &>/dev/null
-    local SET_EXISTS=$?
+    # 2. THE FIX: Search for the label as a raw string. 
+    # Do not wrap the search term in extra escaped quotes.
+    iptables -S INPUT 2>/dev/null | grep -q ONYX_GEOBLOCK
+    local RULE_STATUS=$?
 
-    if [[ "$INTENT" == "true" ]]; then
-        [[ $RULE_EXISTS -eq 0 && $SET_EXISTS -eq 0 ]] && return 0 || return 1
-    fi
-
-    if [[ "$INTENT" == "false" ]]; then
-        [[ $RULE_EXISTS -ne 0 && $SET_EXISTS -ne 0 ]] && return 0 || return 1
-    fi
-
-    return 1
+    [[ $COUNT -gt 0 && $RULE_STATUS -eq 0 ]] && return 0 || return 1
 }
