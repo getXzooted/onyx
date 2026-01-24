@@ -36,8 +36,8 @@ source $MODULES_DIR/firewall/kernel/icmp_echo_ignore.sh
 # NETWORK
 source $MODULES_DIR/firewall/network/honeypot_trap.sh
 source $MODULES_DIR/firewall/network/tcp_tarpit.sh
-#source $MODULES_DIR/firewall/network/geo_blocking.sh
-#source $MODULES_DIR/firewall/network/unbound_filtered.sh
+source $MODULES_DIR/firewall/network/geo_blocking.sh
+source $MODULES_DIR/firewall/network/unbound_filtered.sh
 source $MODULES_DIR/firewall/network/string_telemetry_filter.sh
 source $MODULES_DIR/firewall/network/mss_clamping.sh
 source $MODULES_DIR/firewall/network/webrtc_stun_block.sh
@@ -47,7 +47,7 @@ source $MODULES_DIR/firewall/network/syn_proxy.sh
 source $MODULES_DIR/firewall/network/tcp_flag_filter.sh
 source $MODULES_DIR/firewall/network/vlan_isolation.sh
 source $MODULES_DIR/firewall/network/safety_net.sh
-
+source $MODULES_DIR/firewall/network/packet_padding.sh
 
 
 
