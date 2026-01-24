@@ -47,7 +47,7 @@ fi
 log_step "Finalizing configuration state..."
 
 # --- ONYX.YML ---
-if [[ "$RESTORE_ONYX" == "true" ]] && [[ -f "$ONYX_BAK" ]]; then
+if [[ "$RESTORE_ONYX" == "RESTORE" ]] && [[ -f "$ONYX_BAK" ]]; then
     mv -f "$ONYX_BAK" "$ONYX_YAML"
     log_info "Restored user onyx.yml"
 elif [[ -f "$ONYX_BAK" ]]; then
@@ -56,7 +56,7 @@ elif [[ -f "$ONYX_BAK" ]]; then
 fi
 
 # --- HARDENING.YML ---
-if [[ "$RESTORE_RULES" == "true" ]] && [[ -f "$HARD_BAK" ]]; then
+if [[ "$RESTORE_RULES" == "RESTORE" ]] && [[ -f "$HARD_BAK" ]]; then
     mv -f "$HARD_BAK" "$HARDENING_YAML"
     log_info "Restored user hardening.yml"
 elif [[ -f "$HARD_BAK" ]]; then
@@ -65,7 +65,7 @@ elif [[ -f "$HARD_BAK" ]]; then
 fi
 
 # --- ASSETS.YML ---
-if [[ "$RESTORE_ASSETS" == "true" ]] && [[ -f "$ASSETS_BAK" ]]; then
+if [[ "$RESTORE_ASSETS" == "RESTORE" ]] && [[ -f "$ASSETS_BAK" ]]; then
     mv -f "$ASSETS_BAK" "$ASSETS_YAML"
     log_info "Restored user assets.yml"
 elif [[ -f "$ASSETS_BAK" ]]; then
