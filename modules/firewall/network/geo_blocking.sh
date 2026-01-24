@@ -6,7 +6,7 @@ function apply_geo_blocking() {
         log_step "Enforcing Sovereign Geoblock (ipset High-Performance)..."
 
         # 1. JIT Prerequisites (using your Asset Engine logic)
-        asset_get "ipset"
+        # asset_get "ipset"
 
         # 2. THE FIX: Force the bridge modules to wake up
         modprobe ip_set 2>/dev/null
