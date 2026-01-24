@@ -3,39 +3,38 @@ function apply_geo_blocking() {
     local LIST="/etc/onyx/firewall/geo_block.list"
 
     if [[ "$INTENT" == "true" ]]; then
-        log_step "Enforcing Sovereign Geoblock (High-Performance)..."
+        log_step "Enforcing Sovereign Geoblock (Syncing Bridge)..."
 
         # 1. JIT Prerequisites
         asset_get "ipset"
+        asset_get "ipset_bridge"
         asset_get "firewall_dir"
         asset_get "geoblock_high_risk"
 
-        # 2. Kernel Bridge: Ensure modules are active for Pi hardware
-        modprobe ip_set 2>/dev/null
-        modprobe ip_set_hash_net 2>/dev/null
-        modprobe xt_set 2>/dev/null
+        # 2. Kernel Module Bridge
+        # We remove 2>/dev/null here so you can see if the kernel rejects the module
+        modprobe ip_set
+        modprobe ip_set_hash_net
+        if ! modprobe xt_set; then
+            log_error "Kernel Failure: 'xt_set' module not found. Geoblock cannot link to iptables."
+            return 1
+        fi
 
         if [[ -f "$LIST" ]]; then
-            # 3. Memory Set Initialization
             ipset create onyx_geoblock hash:net -exist
             ipset flush onyx_geoblock
 
-            # 4. ATOMIC RESTORE (The "Zero-Aware" Fix)
-            # Converts CIDR list to ipset commands and injects them in one shot
-            log_info "Loading IP ranges into kernel memory..."
-            sed -e "s/^/add onyx_geoblock /" "$LIST" | ipset restore 2>/dev/null
+            log_info "Injecting IP ranges into kernel..."
+            sed -e "s/^/add onyx_geoblock /" "$LIST" | ipset restore
             
-            # 5. Labeled Firewall Injection
+            # 3. Inject Labeled Rule
             build_rule INPUT -m set --match-set onyx_geoblock src -j DROP \
                 -m comment --comment "ONYX_GEOBLOCK"
             
-            log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges loaded."
-        else
-            log_error "Geoblock source missing at $LIST."
-            return 1
+            log_success "Geoblock state synchronized."
         fi
     else
-        log_warning "Deactivating Sovereign Geoblock..."
+        log_warning "Deactivating Geoblock..."
         delete_rule INPUT -m set --match-set onyx_geoblock src -j DROP \
             -m comment --comment "ONYX_GEOBLOCK"
         ipset destroy onyx_geoblock 2>/dev/null
