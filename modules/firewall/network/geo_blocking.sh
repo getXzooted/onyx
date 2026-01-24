@@ -3,39 +3,41 @@ function apply_geo_blocking() {
     local LIST="/etc/onyx/firewall/geo_block.list"
 
     if [[ "$INTENT" == "true" ]]; then
-        log_step "Enforcing Sovereign Geoblock (ipset)..."
+        log_step "Enforcing Sovereign Geoblock (High-Performance)..."
 
-        # 1. Ensure Dependencies & Directories exist via Asset Engine
-        # We assume 'ipset_binary' and 'firewall_dir' are defined in assets.yml
+        # 1. JIT Prerequisites
+        asset_get "ipset"
         asset_get "firewall_dir"
         asset_get "geoblock_high_risk"
 
+        # 2. Kernel Bridge: Ensure modules are active for Pi hardware
+        modprobe ip_set 2>/dev/null
+        modprobe ip_set_hash_net 2>/dev/null
+        modprobe xt_set 2>/dev/null
+
         if [[ -f "$LIST" ]]; then
-            # 2. Create high-performance memory set
+            # 3. Memory Set Initialization
             ipset create onyx_geoblock hash:net -exist
-
-            # 3. Atomic Reload: Flush and populate memory set
             ipset flush onyx_geoblock
-            while read -r range; do
-                [[ -z "$range" || "$range" == \#* ]] && continue
-                ipset add onyx_geoblock "$range" -exist
-            done < "$LIST"
 
-            # 4. Inject the single lookup rule with Onyx label
+            # 4. ATOMIC RESTORE (The "Zero-Aware" Fix)
+            # Converts CIDR list to ipset commands and injects them in one shot
+            log_info "Loading IP ranges into kernel memory..."
+            sed -e "s/^/add onyx_geoblock /" "$LIST" | ipset restore 2>/dev/null
+            
+            # 5. Labeled Firewall Injection
             build_rule INPUT -m set --match-set onyx_geoblock src -j DROP \
                 -m comment --comment "ONYX_GEOBLOCK"
             
-            log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges in memory."
+            log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges loaded."
         else
-            log_error "Geoblock list missing at $LIST. Asset retrieval failed."
+            log_error "Geoblock source missing at $LIST."
             return 1
         fi
     else
         log_warning "Deactivating Sovereign Geoblock..."
-        # Remove the firewall rule using its unique label
         delete_rule INPUT -m set --match-set onyx_geoblock src -j DROP \
             -m comment --comment "ONYX_GEOBLOCK"
-        # Destroy the memory set to free RAM
         ipset destroy onyx_geoblock 2>/dev/null
     fi
 }
@@ -43,20 +45,23 @@ function apply_geo_blocking() {
 function check_geo_blocking() {
     local INTENT=$1
     
-    # 1. Check if the ipset physically exists in memory
-    local SET_EXISTS=$(ipset list onyx_geoblock &>/dev/null && echo 0 || echo 1)
+    # Audit 1: Verify the set exists and has members
+    local MEMBER_COUNT=$(ipset list onyx_geoblock 2>/dev/null | grep -c '/')
     
-    # 2. Check for the labeled firewall rule
+    # Audit 2: Verify the labeled rule is in the live chain
     iptables -S INPUT 2>/dev/null | grep -q "ONYX_GEOBLOCK"
     local RULE_EXISTS=$?
 
     # SYNC LOGIC:
-    # 1. Intent is 'true' and BOTH set + rule exist -> Sync (0)
-    if [[ "$INTENT" == "true" && $SET_EXISTS -eq 0 && $RULE_EXISTS -eq 0 ]]; then return 0; fi
-    
-    # 2. Intent is 'false' and BOTH are gone -> Sync (0)
-    if [[ "$INTENT" == "false" && $SET_EXISTS -ne 0 && $RULE_EXISTS -ne 0 ]]; then return 0; fi
+    if [[ "$INTENT" == "true" ]]; then
+        # Rule exists AND set is populated
+        [[ $RULE_EXISTS -eq 0 && $MEMBER_COUNT -gt 0 ]] && return 0 || return 1
+    fi
 
-    # Otherwise, system has drifted (e.g. set exists but rule is missing)
+    if [[ "$INTENT" == "false" ]]; then
+        # Rule is gone AND set is gone/empty
+        [[ $RULE_EXISTS -ne 0 && $MEMBER_COUNT -eq 0 ]] && return 0 || return 1
+    fi
+
     return 1
 }
