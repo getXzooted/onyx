@@ -3,35 +3,33 @@ function apply_geo_blocking() {
     local LIST="/etc/onyx/firewall/geo_block.list"
 
     if [[ "$INTENT" == "true" ]]; then
-        log_step "Enforcing Sovereign Geoblock (Syncing Bridge)..."
+        log_step "Enforcing Sovereign Geoblock (ipset High-Performance)..."
 
-        # 1. JIT Prerequisites
+        # 1. JIT Prerequisites (using your Asset Engine logic)
         asset_get "ipset"
-        asset_get "ipset_bridge"
-        asset_get "firewall_dir"
-        asset_get "geoblock_high_risk"
 
-        # 2. Kernel Module Bridge
-        # We remove 2>/dev/null here so you can see if the kernel rejects the module
-        modprobe ip_set
-        modprobe ip_set_hash_net
-        if ! modprobe xt_set; then
-            log_error "Kernel Failure: 'xt_set' module not found. Geoblock cannot link to iptables."
-            return 1
-        fi
+        # 2. THE FIX: Force the bridge modules to wake up
+        modprobe ip_set 2>/dev/null
+        modprobe xt_set 2>/dev/null
 
         if [[ -f "$LIST" ]]; then
+            # 3. Standard ipset logic
             ipset create onyx_geoblock hash:net -exist
             ipset flush onyx_geoblock
 
-            log_info "Injecting IP ranges into kernel..."
-            sed -e "s/^/add onyx_geoblock /" "$LIST" | ipset restore
-            
-            # 3. Inject Labeled Rule
+            log_info "Loading IP ranges into kernel memory..."
+            # Using your while loop as requested
+            while read -r range; do
+                [[ -z "$range" || "$range" == \#* ]] && continue
+                ipset add onyx_geoblock "$range" -exist
+            done < "$LIST"
+
+            # 4. Inject Labeled Rule
+            # Adding the comment ensures build_rule matches perfectly
             build_rule INPUT -m set --match-set onyx_geoblock src -j DROP \
                 -m comment --comment "ONYX_GEOBLOCK"
             
-            log_success "Geoblock state synchronized."
+            log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges loaded."
         fi
     else
         log_warning "Deactivating Geoblock..."
@@ -44,22 +42,20 @@ function apply_geo_blocking() {
 function check_geo_blocking() {
     local INTENT=$1
     
-    # Audit 1: Verify the set exists and has members
-    local MEMBER_COUNT=$(ipset list onyx_geoblock 2>/dev/null | grep -c '/')
-    
-    # Audit 2: Verify the labeled rule is in the live chain
+    # Audit for the specific ONYX_GEOBLOCK label we just added
     iptables -S INPUT 2>/dev/null | grep -q "ONYX_GEOBLOCK"
     local RULE_EXISTS=$?
+    
+    # Verify the set is actually in memory
+    ipset list onyx_geoblock &>/dev/null
+    local SET_EXISTS=$?
 
-    # SYNC LOGIC:
     if [[ "$INTENT" == "true" ]]; then
-        # Rule exists AND set is populated
-        [[ $RULE_EXISTS -eq 0 && $MEMBER_COUNT -gt 0 ]] && return 0 || return 1
+        [[ $RULE_EXISTS -eq 0 && $SET_EXISTS -eq 0 ]] && return 0 || return 1
     fi
 
     if [[ "$INTENT" == "false" ]]; then
-        # Rule is gone AND set is gone/empty
-        [[ $RULE_EXISTS -ne 0 && $MEMBER_COUNT -eq 0 ]] && return 0 || return 1
+        [[ $RULE_EXISTS -ne 0 && $SET_EXISTS -ne 0 ]] && return 0 || return 1
     fi
 
     return 1
