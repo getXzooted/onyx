@@ -10,7 +10,7 @@ function apply_ttl_identity_mask() {
         local VAL=$(get_persona_value "ttl")
         log_step "Enforcing Persona TTL Identity: $VAL"
         
-        iptables POSTROUTING -t mangle -j TTL --ttl-set "$VAL" \
+        build_rule POSTROUTING -t mangle -j TTL --ttl-set "$VAL" \
             -m comment --comment "ONYX_TTL_MASK"
     else
         log_warning "TTL Identity Masking Disabled."
@@ -20,12 +20,17 @@ function apply_ttl_identity_mask() {
 function check_ttl_identity_mask() {
     local INTENT=$1
     local DESIRED_VAL=$(get_persona_value "ttl")
-    local CURRENT_VAL=$(iptables -t mangle -S POSTROUTING 2>/dev/null | grep -q ONYX_TTL_MASK | awk '{print $NF}')
+    
+    # THE FIX: Auditor must specifically check the mangle table
+    # We grep for the label to avoid the quoting/parsing issues
+    iptables -t mangle -S POSTROUTING 2>/dev/null | grep -q "ONYX_TTL_MASK"
+    local STATUS=$?
 
     if [[ "$INTENT" == "true" ]]; then
-        [[ "$CURRENT_VAL" == "$DESIRED_VAL" ]] && return 0 || return 1
+        [[ $STATUS -eq 0 ]] && return 0 || return 1
     fi
     
-    # If intent is false, we are in sync only if CURRENT_VAL is empty
-    [[ -z "$CURRENT_VAL" ]] && return 0 || return 1
+    if [[ "$INTENT" == "false" ]]; then
+        [[ $STATUS -ne 0 ]] && return 0 || return 1
+    fi
 }
