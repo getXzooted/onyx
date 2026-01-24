@@ -8,6 +8,7 @@ assets:
 
   ipset:
     type: "package"
+    package_name: "ipset"
 
   # --- Intelligence Feeds ---
   sentinel_dns:
