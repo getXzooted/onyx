@@ -48,5 +48,9 @@ function check_geo_blocking() {
     iptables -S INPUT 2>/dev/null | grep -q ONYX_GEOBLOCK
     local RULE_STATUS=$?
 
-    [[ $COUNT -gt 0 && $RULE_STATUS -eq 0 ]] && return 0 || return 1
+    if [[ "$COUNT" -gt 0 ]] && [[ "$RULE_STATUS" -eq 0 ]]; then
+        return 0
+    fi
+    
+    return 1
 }
