@@ -196,6 +196,15 @@ function asset_get() {
     fi
 
     case "$TYPE" in
+        package)
+            # KEY is used as the package name (e.g., ipset)
+            if ! command -v "$KEY" &>/dev/null; then
+                log_step "Installing system dependency: $KEY..."
+                DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "$KEY" &>/dev/null
+                log_success "$KEY installed."
+            fi
+            ;;
+            
         directory)
             if [[ ! -d "$TARGET" ]]; then
                 log_step "Creating directory for $KEY: $TARGET..."
