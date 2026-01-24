@@ -1,13 +1,15 @@
 # /opt/onyx/config/hardening.yml
 # LINEAR EXECUTION ORDER: FOUNDATION -> STEALTH -> RETALIATION
+
 hardening:
-  persona: "apple"              # Options: 'apple', 'windows', 'linux'
+
+  persona: "apple"
+  # Options: 'apple', 'windows', 'linux'
 
   interfaces:
     hotspot: "uap0"             # Standard Onyx hotspot interface
     tunnel: "wg0"               # Primary WireGuard tunnel
-  
-  # --- PHASE 1: FOUNDATION (The "Keep-Alive" Rules) ---
+
   foundation:
     default_deny: true           # Set policy to DROP
     established_related: true    # Allows return traffic for ongoing work
@@ -17,7 +19,6 @@ hardening:
     vpn_transport: true         # Permits physical exit to VPN endpoint
     tunnel_integrity: true      # Protects traffic within the wg0 tunnel
 
-  # --- PHASE 2: SYSTEM & KERNEL STEALTH ---
   system:
     use_zram: false              # Optimizes RAM for Pi Zero performance
     forensic_zero: false         # Moves logs to RAM disk to prevent forensics
@@ -26,7 +27,7 @@ hardening:
     bluetooth_lockdown: true      # Disables Bluetooth hardware at kernel level
     mac_blend: true          # Options: "apple", "samsung", "intel", "random", "off"
     ttl_identity_mask: true      # Appears as Windows stack at the packet level
-  
+
   kernel:
     tcp_timestamps: true # Disables TCP Timestamps to hide uptime
     qname_minimization: true          # Enables DNS QNAME Minimization
@@ -42,7 +43,6 @@ hardening:
     ignore_redirects: true       # Disables ICMP Redirect acceptance
     no_send_redirects: true      # Disables sending of ICMP Redirects
 
-  # --- PHASE 3: ACTIVE DEFENSE & TRAFFIC OBFUSCATION ---
   network:
     hardware_reactive: false      # Locks down new network hardware via udev
     safety_net: true             # Periodically enforces firewall ruleset
