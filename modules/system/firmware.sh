@@ -46,27 +46,31 @@ fi
 # This allows you to "Apply New Rules" by skipping the move-back
 log_step "Finalizing configuration state..."
 
-if [[ "$RESTORE_ONYX" == "RESTORE" ]]; then
-    [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML"
-else
-    [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML.bak"
-    log_warning "Applied FRESH onyx.yml. Old version saved as .bak"
+# --- ONYX.YML ---
+if [[ "$RESTORE_ONYX" == "true" ]] && [[ -f "$ONYX_BAK" ]]; then
+    mv -f "$ONYX_BAK" "$ONYX_YAML"
+    log_info "Restored user onyx.yml"
+elif [[ -f "$ONYX_BAK" ]]; then
+    mv -f "$ONYX_BAK" "$ONYX_YAML.bak"
+    log_warning "Fresh onyx.yml applied. Backup saved to config folder."
 fi
 
-# Handle Rules
-if [[ "$RESTORE_RULES" == "RESTORE" ]]; then
-    [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML"
-else
-    [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML.bak"
-    log_warning "Applied FRESH hardening.yml. Old version saved as .bak"
+# --- HARDENING.YML ---
+if [[ "$RESTORE_RULES" == "true" ]] && [[ -f "$HARD_BAK" ]]; then
+    mv -f "$HARD_BAK" "$HARDENING_YAML"
+    log_info "Restored user hardening.yml"
+elif [[ -f "$HARD_BAK" ]]; then
+    mv -f "$HARD_BAK" "$HARDENING_YAML.bak"
+    log_warning "Fresh hardening.yml applied. Backup saved to config folder."
 fi
 
-# Handle Assets
-if [[ "$RESTORE_ASSETS" == "RESTORE" ]]; then
-    [[ -f "$ASSETS_BAK" ]] && mv "$ASSETS_BAK" "$ASSETS_YAML"
-else
-    [[ -f "$ASSETS_BAK" ]] && mv "$ASSETS_BAK" "$ASSETS_YAML.bak"
-    log_warning "Applied FRESH assets.yml. Old version saved as .bak"
+# --- ASSETS.YML ---
+if [[ "$RESTORE_ASSETS" == "true" ]] && [[ -f "$ASSETS_BAK" ]]; then
+    mv -f "$ASSETS_BAK" "$ASSETS_YAML"
+    log_info "Restored user assets.yml"
+elif [[ -f "$ASSETS_BAK" ]]; then
+    mv -f "$ASSETS_BAK" "$ASSETS_YAML.bak"
+    log_warning "Fresh assets.yml applied. Backup saved to config folder."
 fi
 
 # 5. Re-apply permissions and symlinks to ensure new scripts are executable
