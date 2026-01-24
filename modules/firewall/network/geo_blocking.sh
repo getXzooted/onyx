@@ -27,7 +27,7 @@ function apply_geo_blocking() {
             # 4. Inject Labeled Rule
             # Adding the comment ensures build_rule matches perfectly
             build_rule INPUT -m set --match-set onyx_geoblock src -j DROP \
-                -m comment --comment ONYX_GEOBLOCK
+                -m comment --comment "ONYX_GEOBLOCK"
             
             log_success "Geoblock active: $(ipset list onyx_geoblock | grep -c '/') ranges loaded."
         fi
