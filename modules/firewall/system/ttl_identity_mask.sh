@@ -20,7 +20,7 @@ function apply_ttl_identity_mask() {
 function check_ttl_identity_mask() {
     local INTENT=$1
     local DESIRED_VAL=$(get_persona_value "ttl")
-    local CURRENT_VAL=$(iptables -t mangle -S POSTROUTING 2>/dev/null | grep "TTL set to" | awk '{print $NF}')
+    local CURRENT_VAL=$(iptables -t mangle -S POSTROUTING 2>/dev/null | grep ONYX_TTL_MASK | awk '{print $NF}')
 
     if [[ "$INTENT" == "true" ]]; then
         [[ "$CURRENT_VAL" == "$DESIRED_VAL" ]] && return 0 || return 1
