@@ -174,3 +174,73 @@ function get_persona_value() {
             ;;
     esac
 }
+
+
+#!/bin/bash
+# CORE: Sovereign Asset Engine
+# Purpose: Granular, idempotent management of files, binaries, and directories.
+
+function asset_get() {
+    local KEY=$1
+    local MANIFEST="$ONYX_ROOT/config/assets.yml"
+
+    # 1. Extract Asset Metadata
+    local URL=$(yq e ".assets.$KEY.source" "$MANIFEST")
+    local TARGET=$(yq e ".assets.$KEY.path" "$MANIFEST")
+    local TYPE=$(yq e ".assets.$KEY.type" "$MANIFEST")
+    local ACTION=$(yq e ".assets.$KEY.action" "$MANIFEST")
+
+    if [[ "$URL" == "null" && "$TYPE" != "directory" ]]; then
+        log_error "Asset '$KEY' not defined in assets.yml"
+        return 1
+    fi
+
+    case "$TYPE" in
+        directory)
+            if [[ ! -d "$TARGET" ]]; then
+                log_step "Creating directory for $KEY: $TARGET..."
+                mkdir -p "$TARGET"
+                log_success "Directory created."
+            fi
+            ;;
+
+        binary|file)
+            log_step "Checking asset integrity: $KEY..."
+            # Idempotent Download: Only downloads if remote is newer than local
+            if curl -sSL -z "$TARGET" "$URL" -o "$TARGET.tmp"; then
+                if [ -f "$TARGET.tmp" ]; then
+                    log_info "New version detected for $KEY. Deploying to $TARGET..."
+                    mv "$TARGET.tmp" "$TARGET"
+                    
+                    # Type-specific post-processing
+                    [[ "$TYPE" == "binary" ]] && chmod +x "$TARGET"
+                    
+                    # Trigger Post-Update Action defined in YAML
+                    [[ "$ACTION" != "null" ]] && eval "$ACTION"
+                    log_success "$KEY updated."
+                else
+                    log_info "$KEY is already at the latest version."
+                fi
+            else
+                log_error "Failed to retrieve $KEY from $URL"
+                return 1
+            fi
+            ;;
+
+        *)
+            log_error "Unknown asset type '$TYPE' for key '$KEY'."
+            return 1
+            ;;
+    esac
+}
+
+function asset_sync_all() {
+    local MANIFEST="$ONYX_ROOT/config/assets.yml"
+    log_header "ONYX SENTINEL: FULL ASSET SYNC"
+
+    local ASSET_KEYS=$(yq e '.assets | keys | .[]' "$MANIFEST")
+
+    for KEY in $ASSET_KEYS; do
+        asset_get "$KEY"
+    done
+}
