@@ -46,7 +46,7 @@ fi
 # This allows you to "Apply New Rules" by skipping the move-back
 log_step "Finalizing configuration state..."
 
-if [[ "$ONYX_STATE" == "RESTORE" ]]; then
+if [[ "$RESTORE_ONYX" == "RESTORE" ]]; then
     [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML"
 else
     [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML.bak"
@@ -54,7 +54,7 @@ else
 fi
 
 # Handle Rules
-if [[ "$RULES_STATE" == "RESTORE" ]]; then
+if [[ "$RESTORE_RULES" == "RESTORE" ]]; then
     [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML"
 else
     [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML.bak"
@@ -62,7 +62,7 @@ else
 fi
 
 # Handle Assets
-if [[ "$ASSETS_STATE" == "RESTORE" ]]; then
+if [[ "$RESTORE_ASSETS" == "RESTORE" ]]; then
     [[ -f "$ASSETS_BAK" ]] && mv "$ASSETS_BAK" "$ASSETS_YAML"
 else
     [[ -f "$ASSETS_BAK" ]] && mv "$ASSETS_BAK" "$ASSETS_YAML.bak"
