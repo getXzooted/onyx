@@ -48,7 +48,7 @@ hardening:
     safety_net: true             # Periodically enforces firewall ruleset
     honeypot_trap: true          # Deploys Honeypot ports (TARPIT or RESET)
     tcp_tarpit: true           # Heavy defense (requires specific kernel modules)
-    geo_blocking: false           # Blocks foreign traffic via ipset
+    geo_blocking: true           # Blocks foreign traffic via ipset
     unbound_filtered: true       # Enforces Sentinel DNS blocklists
     string_telemetry_filter: true     # Blocks metrics/analytics strings in packets
     mss_clamping: true            # Clamps TCP MSS to prevent oversized packets
@@ -57,5 +57,5 @@ hardening:
     discovery_stealth: true             # Kills mDNS and LLMNR discovery broadcasts
     syn_proxy: true              # Protects against SYN flood attacks
     tcp_flag_filter: true           # Drops malformed protocol flag combinations
-    packet_padding: false        # Obfuscates size/timing (High performance cost)
+    packet_padding: true        # Obfuscates size/timing (High performance cost)
     vlan_isolation: true      # Prevents VLAN cross-talk
