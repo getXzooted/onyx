@@ -3,16 +3,16 @@
 # Handles the phased firmware updating of Onyx Gateway.
 
 # Flag Parsing (Positional arguments from CLI)
-RESTORE_ONYX=true
-RESTORE_RULES=true
-RESTORE_ASSETS=true
+RESTORE_ONYX="RESTORE"
+RESTORE_RULES="RESTORE"
+RESTORE_ASSETS="RESTORE"
 
 for arg in "$@"; do
     case $arg in
-        --fresh-onyx)    RESTORE_ONYX=false ;;
-        --fresh-rules)    RESTORE_RULES=false ;;
-        --fresh-assets)    RESTORE_ASSETS=false ;;
-        --fresh-all)     RESTORE_ONYX=false; RESTORE_RULES=false; RESTORE_ASSETS=false ;;
+        --fresh-onyx)    RESTORE_ONYX="FRESH" ;;
+        --fresh-rules)    RESTORE_RULES="FRESH" ;;
+        --fresh-assets)    RESTORE_ASSETS="FRESH" ;;
+        --fresh-all)     RESTORE_ONYX="FRESH"; RESTORE_RULES="FRESH"; RESTORE_ASSETS="FRESH" ;;
     esac
 done
 
@@ -46,25 +46,27 @@ fi
 # This allows you to "Apply New Rules" by skipping the move-back
 log_step "Finalizing configuration state..."
 
-if [[ "$RESTORE_ONYX" == "true" ]]; then
+if [[ "$ONYX_STATE" == "RESTORE" ]]; then
     [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML"
-    log_info "Restored existing onyx.yml."
 else
-    log_warning "Fresh onyx.yml applied from repository (Backup at $ONYX_BAK)."
+    [[ -f "$ONYX_BAK" ]] && mv "$ONYX_BAK" "$ONYX_YAML.bak"
+    log_warning "Applied FRESH onyx.yml. Old version saved as .bak"
 fi
 
-if [[ "$RESTORE_RULES" == "true" ]]; then
+# Handle Rules
+if [[ "$RULES_STATE" == "RESTORE" ]]; then
     [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML"
-    log_info "Restored existing hardening.yml."
 else
-    log_warning "Fresh hardening.yml applied from repository (Backup at $HARD_BAK)."
+    [[ -f "$HARD_BAK" ]] && mv "$HARD_BAK" "$HARDENING_YAML.bak"
+    log_warning "Applied FRESH hardening.yml. Old version saved as .bak"
 fi
 
-if [[ "$RESTORE_ASSETS" == "true" ]]; then
+# Handle Assets
+if [[ "$ASSETS_STATE" == "RESTORE" ]]; then
     [[ -f "$ASSETS_BAK" ]] && mv "$ASSETS_BAK" "$ASSETS_YAML"
-    log_info "Restored existing assets.yml."
 else
-    log_warning "Fresh assets.yml applied from repository (Backup at $ASSETS_BAK)."
+    [[ -f "$ASSETS_BAK" ]] && mv "$ASSETS_BAK" "$ASSETS_YAML.bak"
+    log_warning "Applied FRESH assets.yml. Old version saved as .bak"
 fi
 
 # 5. Re-apply permissions and symlinks to ensure new scripts are executable
